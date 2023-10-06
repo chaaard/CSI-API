@@ -14,14 +14,24 @@ namespace CSI.Infrastructure.Data
         public AppDBContext(DbContextOptions<AppDBContext> options) : base(options)
         {
             Users = Set<User>();
+            Departments = Set<Department>();
+            SalesAnalytics = Set<SalesAnalytics>();
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Department> Departments { get; set; }
+        public DbSet<SalesAnalytics> SalesAnalytics { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
                 .ToTable("tbl_user");
+
+            modelBuilder.Entity<Department>()
+              .ToTable("tbl_department_code");
+
+            modelBuilder.Entity<SalesAnalytics>()
+             .ToTable("tbl_sales_analytics");
         }
     }
 }
