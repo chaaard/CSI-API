@@ -15,6 +15,8 @@ using Microsoft.EntityFrameworkCore;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace CSI.Application.Services
 {
@@ -79,6 +81,7 @@ namespace CSI.Application.Services
                 catch (Exception)
                 {
                     await db.Con.CloseAsync();
+                    await DropTables(strStamp, db);
                     throw;
                 }
 
@@ -109,6 +112,7 @@ namespace CSI.Application.Services
                 catch (Exception)
                 {
                     await db.Con.CloseAsync();
+                    await DropTables(strStamp, db);
                     throw;
                 }
 
@@ -140,6 +144,7 @@ namespace CSI.Application.Services
                 catch (Exception)
                 {
                     await db.Con.CloseAsync();
+                    await DropTables(strStamp, db);
                     throw;
                 }
 
@@ -167,6 +172,7 @@ namespace CSI.Application.Services
                 catch (Exception)
                 {
                     await db.Con.CloseAsync();
+                    await DropTables(strStamp, db);
                     throw;
                 }
 
@@ -182,6 +188,7 @@ namespace CSI.Application.Services
                     cmd.Connection = db.Con;
                     cmd.CommandTimeout = 0;
                     cmd.CommandType = CommandType.Text;
+                    //Insert the data from tbl_sales_analytics
                     cmd.CommandText = $"INSERT INTO[dbo].[tbl_sales_analytics] (CSSTOR, CSDATE, CSCUST, CSREG, CSTRAN, CSCARD, CSQTY, CSEXPR, CSTAMT) " +
                                       $"SELECT E.STRNAM AS CSSTOR, C.CSDATE, A.CSCUST, C.CSREG, C.CSTRAN, B.CSCARD, SUM(C.CSQTY) AS CSQTY, SUM(C.CSEXPR) AS CSEXPR, A.CSTAMT " +
                                       $"FROM SALES_ANALYTICS_CSHHDR{strStamp} A " +
@@ -195,16 +202,77 @@ namespace CSI.Application.Services
 
                     await db.Con.CloseAsync();
 
+                    await DropTables(strStamp, db);
+
+                    listResultOne = await _dbContext.SalesAnalytics
+                        .Select(result => new SalesAnalyticsDto
+                        {
+                            CSSTOR = result.CSSTOR,
+                            CSDATE = result.CSDATE,
+                            CSCUST = result.CSCUST,
+                            CSREG = result.CSREG,
+                            CSTRAN = result.CSTRAN,
+                            CSCARD = result.CSCARD,
+                            CSQTY = result.CSQTY,
+                            CSEXPR = result.CSEXPR,
+                            CSTAMT = result.CSTAMT,
+                        })
+                        .ToListAsync();
+
                 }
                 catch (Exception)
                 {
 
                     await db.Con.CloseAsync();
+                    await DropTables(strStamp, db);
                     throw;
                 }
             }
 
             return listResultOne;
+        }
+
+        private async Task DropTables(string strStamp, MsSqlCon db)
+        {
+            var cmd = new SqlCommand();
+            cmd.Connection = db.Con;
+            cmd.CommandTimeout = 0;
+            cmd.CommandType = CommandType.Text;
+
+            try
+            {
+                if (db.Con.State == ConnectionState.Closed)
+                {
+                    await db.Con.OpenAsync();
+                }
+
+                cmd.CommandText = $"IF OBJECT_ID('SALES_ANALYTICS_CSHTND{strStamp}', 'U') IS NOT NULL " +
+                                  $"DROP TABLE SALES_ANALYTICS_CSHTND{strStamp}";
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = $"IF OBJECT_ID('SALES_ANALYTICS_CSHHDR{strStamp}', 'U') IS NOT NULL " +
+                                  $"DROP TABLE SALES_ANALYTICS_CSHHDR{strStamp}";
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = $"IF OBJECT_ID('SALES_ANALYTICS_CONDTX{strStamp}', 'U') IS NOT NULL " +
+                                  $"DROP TABLE SALES_ANALYTICS_CONDTX{strStamp}";
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = $"IF OBJECT_ID('SALES_ANALYTICS_INVMST{strStamp}', 'U') IS NOT NULL " +
+                                  $"DROP TABLE SALES_ANALYTICS_INVMST{strStamp}";
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = $"IF OBJECT_ID('SALES_ANALYTICS_TBLSTR{strStamp}', 'U') IS NOT NULL " +
+                                  $"DROP TABLE SALES_ANALYTICS_TBLSTR{strStamp}";
+                await cmd.ExecuteNonQueryAsync();
+
+                await db.Con.CloseAsync();
+            }
+            catch (Exception)
+            {
+                await db.Con.CloseAsync();
+                throw;
+            }
         }
 
         public async Task<List<int>> GetDepartments()
