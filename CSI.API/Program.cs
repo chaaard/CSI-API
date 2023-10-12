@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPasswordHashService, PasswordHashService>();
+builder.Services.AddScoped<ISalesAnalyticsService, SalesAnalyticsService>();
 
 // Db Connection.
 builder.Services.AddDbContext<AppDBContext>(options =>
