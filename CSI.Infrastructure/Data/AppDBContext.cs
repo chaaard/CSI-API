@@ -15,12 +15,16 @@ namespace CSI.Infrastructure.Data
         {
             Users = Set<User>();
             Departments = Set<Department>();
-            SalesAnalytics = Set<SalesAnalytics>();
+            CustomerCodes = Set<CustomerCodes>();
+            Category = Set<Category>();
+            Analytics = Set<Analytics>();
         }
 
         public DbSet<User> Users { get; set; }
         public DbSet<Department> Departments { get; set; }
-        public DbSet<SalesAnalytics> SalesAnalytics { get; set; }
+        public DbSet<CustomerCodes> CustomerCodes { get; set; }
+        public DbSet<Category> Category { get; set; }
+        public DbSet<Analytics> Analytics { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -28,10 +32,16 @@ namespace CSI.Infrastructure.Data
                 .ToTable("tbl_user");
 
             modelBuilder.Entity<Department>()
-              .ToTable("tbl_department_code");
+                .ToTable("tbl_department_code");
 
-            modelBuilder.Entity<SalesAnalytics>()
-             .ToTable("tbl_sales_analytics");
+            modelBuilder.Entity<CustomerCodes>()
+                .ToTable("tbl_customer");
+
+            modelBuilder.Entity<Category>()
+                .ToTable("tbl_category");
+
+            modelBuilder.Entity<Analytics>()
+               .ToTable("tbl_analytics");
         }
     }
 }

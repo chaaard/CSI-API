@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace CSI.Application.DTOs
 {
-    public class SalesAnalyticsParamsDto
+    public class AnalyticsParamsDto
     {
         public List<DateTime> dates { get; set; } = new List<DateTime>();
         public List<string> memCode { get; set; } = new List<string>();
+        public string userId { get; set; } = string.Empty;
     }
 }
