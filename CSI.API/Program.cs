@@ -14,7 +14,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPasswordHashService, PasswordHashService>();
+<<<<<<< Updated upstream
 builder.Services.AddScoped<ISalesAnalyticsService, SalesAnalyticsService>();
+=======
+builder.Services.AddScoped<ICustomerCodeService, CustomerCodeService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IProofListService, ProofListService>();
+builder.Services.AddHostedService<AnalyticsSchedulerService>();
+>>>>>>> Stashed changes
 
 // Db Connection.
 builder.Services.AddDbContext<AppDBContext>(options =>
