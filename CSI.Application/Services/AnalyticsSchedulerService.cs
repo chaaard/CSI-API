@@ -43,7 +43,6 @@ namespace CSI.Application.Services
             {
                 var analyticsService = scope.ServiceProvider.GetRequiredService<IAnalyticsService>();
                 var salesParam = new AnalyticsParamsDto();
-                analyticsService.SalesAnalytics(salesParam).Wait();
             }
         }
 
