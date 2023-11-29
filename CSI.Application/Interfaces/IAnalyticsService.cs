@@ -10,6 +10,7 @@ namespace CSI.Application.Interfaces
 {
     public interface IAnalyticsService
     {
-        Task<List<Analytics>> SalesAnalytics(AnalyticsParamsDto salesParam);
+        Task<List<AnalyticsDto>> GetAnalytics(AnalyticsParamsDto analyticsParamsDto);
+        Task<List<MatchDto>> GetAnalyticsProofListVariance(AnalyticsParamsDto analyticsParamsDto);
     }
 }

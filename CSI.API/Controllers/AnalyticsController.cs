@@ -18,32 +18,6 @@ namespace CSI.API.Controllers
             _analyticsService = analyticsService;
         }
 
-        [HttpPost("Analytics")]
-        public async Task<IActionResult> Analytics(AnalyticsParamsDto salesAnalyticsParamsDto)
-        {
-            try
-            {
-                var result = await _analyticsService.SalesAnalytics(salesAnalyticsParamsDto);
-
-                if (result != null)
-                {
-                    return Ok(result);
-                }
-
-                return NotFound();
-            }
-            catch (OperationCanceledException)
-            {
-                // Handle cancellation if needed
-                return StatusCode(499, "Request canceled"); // 499 Client Closed Request is a common status code for cancellation
-            }
-            catch (Exception ex)
-            {
-                // Handle other exceptions
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
-        }
-
         [HttpPost("GetAnalytics")]
         public async Task<IActionResult> GetAnalytics(AnalyticsParamsDto salesAnalyticsParamsDto)
         {

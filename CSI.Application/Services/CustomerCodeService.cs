@@ -1,3 +1,4 @@
+
 ﻿using CSI.Application.DTOs;
 using CSI.Application.Interfaces;
 using CSI.Domain.Entities;
@@ -5,10 +6,6 @@ using CSI.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CSI.Application.Services
 {
@@ -18,7 +15,7 @@ namespace CSI.Application.Services
         private readonly IConfiguration _configuration;
 
         public CustomerCodeService(IConfiguration configuration, AppDBContext dBContext)
-        { 
+        {
             _configuration = configuration;
             _dbContext = dBContext;
         }
