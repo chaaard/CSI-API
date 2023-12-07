@@ -82,6 +82,14 @@ namespace CSI.Application.Services
             return (customerCodesList, totalPages);
         }
 
+        public async Task<List<CustomerCodes>> GetCustomerDdCodesAsync()
+        {
+            var query = await _dbContext.CustomerCodes
+                .Where(customerCode => customerCode.DeleteFlag == false)
+                .ToListAsync();
+
+            return query;
+        }
 
         public async Task<CustomerCodes> GetCustomerCodeByIdAsync(int Id)
         {

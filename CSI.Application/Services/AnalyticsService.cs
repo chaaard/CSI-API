@@ -104,28 +104,80 @@ namespace CSI.Application.Services
             return result;
         }
 
+
         public async Task<List<MatchDto>> GetAnalyticsProofListVariance(AnalyticsParamsDto analyticsParamsDto)
         {
-            var result = await _dbContext.Analytics
-                .Join(_dbContext.Prooflist, a => a.OrderNo, b => b.OrderNo, ( a, b ) => new { a, b })
-                .Where(x => x.a.TransactionDate == analyticsParamsDto.dates[0]
-                        && x.a.LocationId == analyticsParamsDto.storeId[0] 
-                        && x.a.CustomerId == analyticsParamsDto.memCode[0])
-                .Select(n => new MatchDto 
-                {
-                    AnalyticsId = n.a.Id,
-                    AnalyticsTransactionDate = n.a.TransactionDate,
-                    AnalyticsOrderNo = n.a.OrderNo,
-                    AnalyticsAmount = n.a.Amount,
-                    ProofListId = n.b.Id,
-                    ProofListTransactionDate = n.b.TransactionDate,
-                    ProofListOrderNo = n.b.OrderNo,
-                    ProofListAmount = n.b.Amount,
-                    Variance = n.a.Amount - (n.b.Amount ?? 0),
-                })
-                .ToListAsync();
+            try
+            {
+                var result = await _dbContext.Match
+                    .FromSqlRaw(
+                        $"SELECT " +
+                        $"    a.[Id] AS [AnalyticsId], " +
+                        $"    a.CustomerName AS [AnalyticsPartner], " +
+                        $"    a.LocationName AS [AnalyticsLocation], " +
+                        $"    a.[TransactionDate] AS [AnalyticsTransactionDate], " +
+                        $"    a.[OrderNo] AS [AnalyticsOrderNo], " +
+                        $"    a.[Amount] AS [AnalyticsAmount], " +
+                        $"    p.[Id] AS [ProofListId], " +
+                        $"    p.[TransactionDate] AS [ProofListTransactionDate], " +
+                        $"    p.[OrderNo] AS [ProofListOrderNo], " +
+                        $"    p.[Amount] AS [ProofListAmount] " +
+                        $"FROM " +
+                        $"    ( " +
+                        $"        SELECT " +
+                        $"            a.[Id], " +
+                        $"            c.CustomerName, " +
+                        $"            l.LocationName, " +
+                        $"            a.[TransactionDate], " +
+                        $"            a.[OrderNo], " +
+                        $"            a.[Amount] " +
+                        $"        FROM " +
+                        $"            [dbo].[tbl_analytics] a " +
+                        $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = a.LocationId " +
+                        $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = a.CustomerId " +
+                        $"        WHERE " +
+                        $"            (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0]}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}') " +
+                        $"    ) a " +
+                        $"FULL OUTER JOIN " +
+                        $"    ( " +
+                        $"        SELECT " +
+                        $"            p.[Id], " +
+                        $"            c.CustomerName, " +
+                        $"            l.LocationName, " +
+                        $"            p.[TransactionDate], " +
+                        $"            p.[OrderNo], " +
+                        $"            p.[Amount] " +
+                        $"        FROM " +
+                        $"            [dbo].[tbl_prooflist] p " +
+                        $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
+                        $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId " +
+                        $"        WHERE " +
+                        $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0]}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL) " +
+                        $"    ) p " +
+                        $"ON a.[OrderNo] = p.[OrderNo];")
+                    .ToListAsync();
 
-            return result;
+                var matchDtos = result.Select(m => new MatchDto
+                {
+                    AnalyticsId = m.AnalyticsId,
+                    AnalyticsPartner = m.AnalyticsPartner,
+                    AnalyticsLocation = m.AnalyticsLocation,
+                    AnalyticsTransactionDate = m.AnalyticsTransactionDate,
+                    AnalyticsOrderNo = m.AnalyticsOrderNo,
+                    AnalyticsAmount = m.AnalyticsAmount,
+                    ProofListId = m.ProofListId,
+                    ProofListTransactionDate = m.ProofListTransactionDate,
+                    ProofListOrderNo = m.ProofListOrderNo,
+                    ProofListAmount = m.ProofListAmount,
+                    Variance = (m.AnalyticsAmount == null || m.ProofListAmount == null) ? 0 : m.AnalyticsAmount - m.ProofListAmount.Value,
+                }).ToList();
+
+                return matchDtos;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
     }
 }

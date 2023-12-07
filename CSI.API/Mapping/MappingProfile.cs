@@ -9,6 +9,8 @@ namespace CSI.API.Mapping
         public MappingProfile()
         {
             CreateMap<User, UserDto>();
+            CreateMap<AdjustmentAddDto, Adjustments>();
+            CreateMap<AnalyticsProoflistDto, AnalyticsProoflist>();
         }
     }
 }
