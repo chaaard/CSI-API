@@ -1,5 +1,6 @@
 ﻿using CSI.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +22,10 @@ namespace CSI.Infrastructure.Data
             Prooflist = Set<Prooflist>();
             Locations = Set<Location>();
             Status = Set<Status>();
+            Adjustments = Set<Adjustments>();
+            AnalyticsProoflist = Set<AnalyticsProoflist>();
+            Actions = Set<Actions>();
+            Match = Set<Match>();
         }
 
         public DbSet<User> Users { get; set; }
@@ -31,6 +36,12 @@ namespace CSI.Infrastructure.Data
         public DbSet<Prooflist> Prooflist { get; set; }
         public DbSet<Location> Locations { get; set; }
         public DbSet<Status> Status { get; set; }
+        public DbSet<Adjustments> Adjustments { get; set; }
+        public DbSet<AnalyticsProoflist> AnalyticsProoflist { get; set; }
+        public DbSet<Actions> Actions { get; set; }
+        public DbSet<Reasons> Reasons { get; set; }
+        public DbSet<Match> Match { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -56,6 +67,21 @@ namespace CSI.Infrastructure.Data
 
             modelBuilder.Entity<Status>()
             .ToTable("tbl_status");
+
+            modelBuilder.Entity<Adjustments>()
+            .ToTable("tbl_adjustments");
+
+            modelBuilder.Entity<AnalyticsProoflist>()
+            .ToTable("tbl_analytics_prooflist");
+
+            modelBuilder.Entity<Actions>()
+            .ToTable("tbl_action");
+
+            modelBuilder.Entity<Reasons>()
+            .ToTable("tbl_reason");
+
+            modelBuilder.Entity<Match>()
+            .HasNoKey();
         }
     }
 }

@@ -14,5 +14,6 @@ namespace CSI.Application.Interfaces
         Task<CustomerCodes> GetCustomerCodeByIdAsync(int Id);
         Task<CustomerCodes> UpdateCustomerCodeByIdAsync(CustomerCodes customerCode);
         Task<bool> DeleteCustomerCodeByIdAsync(int Id);
+        Task<List<CustomerCodes>> GetCustomerDdCodesAsync();
     }
 }

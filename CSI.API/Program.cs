@@ -18,6 +18,7 @@ builder.Services.AddScoped<ICustomerCodeService, CustomerCodeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IProofListService, ProofListService>();
+builder.Services.AddScoped<IAdjustmentService, AdjustmentService>();
 builder.Services.AddHostedService<AnalyticsSchedulerService>();
 
 // Db Connection.

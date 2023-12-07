@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CSI.Application.DTOs
+namespace CSI.Domain.Entities
 {
-    public class MatchDto
+    public class Match
     {
         public int? AnalyticsId { get; set; }
         public string? AnalyticsPartner { get; set; } = string.Empty;
@@ -18,6 +18,5 @@ namespace CSI.Application.DTOs
         public DateTime? ProofListTransactionDate { get; set; }
         public string? ProofListOrderNo { get; set; } = string.Empty;
         public decimal? ProofListAmount { get; set; }
-        public decimal? Variance { get; set; }
     }
 }
