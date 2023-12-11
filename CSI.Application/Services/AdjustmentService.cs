@@ -26,7 +26,12 @@ namespace CSI.Application.Services
 
         public async Task<(List<AdjustmentDto>, int totalPages)> GetAdjustmentsAsync(AdjustmentParams adjustmentParams)
         {
-            var query = _dbContext.AnalyticsProoflist
+            DateTime date;
+
+            IQueryable<AdjustmentDto> query = Enumerable.Empty<AdjustmentDto>().AsQueryable();
+            if (DateTime.TryParse(adjustmentParams.dates[0], out date))
+            {
+                 query = _dbContext.AnalyticsProoflist
                 .Join(_dbContext.Analytics, ap => ap.AnalyticsId, a => a.Id, (ap, a) => new { ap, a })
                 .GroupJoin(_dbContext.Prooflist, x => x.ap.ProoflistId, p => p.Id, (x, p) => new { x.ap, x.a, Prooflist = p })
                 .SelectMany(x => x.Prooflist.DefaultIfEmpty(), (x, p) => new { x.ap, x.a, Prooflist = p })
@@ -34,6 +39,7 @@ namespace CSI.Application.Services
                 .Join(_dbContext.Adjustments, x => x.ap.AdjustmentId, ad => ad.Id, (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
                 .Join(_dbContext.Actions, x => x.ap.ActionId, ac => ac.Id, (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
                 .Join(_dbContext.Status, x => x.ap.StatusId, s => s.Id, (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                .Where(x => x.a.TransactionDate == date && x.a.LocationId == adjustmentParams.storeId[0] && x.a.CustomerId == adjustmentParams.memCode[0])
                 .Select(x => new AdjustmentDto
                 {
                     Id = x.ap.Id,
@@ -45,6 +51,7 @@ namespace CSI.Application.Services
                     Status = x.Status.StatusName
                 })
                 .OrderBy(x => x.Id);
+            }
 
             var totalItemCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling((double)totalItemCount / adjustmentParams.PageSize);

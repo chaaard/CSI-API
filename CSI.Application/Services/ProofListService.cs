@@ -28,7 +28,7 @@ namespace CSI.Application.Services
 
         }
 
-        public (List<Prooflist>?, string?) ReadProofList(IFormFile file)
+        public (List<Prooflist>?, string?) ReadProofList(IFormFile file, string customerName)
         {
             int row = 2;
             int rowCount = 0;
@@ -49,11 +49,14 @@ namespace CSI.Application.Services
                                 rowCount = worksheet.Dimension.Rows;
 
                                 // Check if the filename contains the word "grabfood"
-                                if (file.FileName.Contains("grab", StringComparison.OrdinalIgnoreCase))
+                                if (customerName == "GrabMart" || customerName == "GrabFood")
                                 {
-                                    var grabProofList = ExtractGrab(worksheet, rowCount, row);
-
-                                    if (!DataExistsInDatabase(grabProofList.Item1))
+                                    var grabProofList = ExtractGrabMartOrFood(worksheet, rowCount, row, customerName);
+                                    if (grabProofList.Item1 == null)
+                                    {
+                                        return (null, grabProofList.Item2);
+                                    }
+                                    else if (!DataExistsInDatabase(grabProofList.Item1))
                                     {
                                         _dbContext.Prooflist.AddRange(grabProofList.Item1);
                                         _dbContext.SaveChanges();
@@ -62,7 +65,61 @@ namespace CSI.Application.Services
                                     else
                                     {
                                         return (null, "Proof list already uploaded!");
-                                    } 
+                                    }
+                                }
+                                else if (customerName == "PickARoo")
+                                {
+                                    var pickARooProofList = ExtractPickARoo(worksheet, rowCount, row, customerName);
+                                    if (pickARooProofList.Item1 == null)
+                                    {
+                                        return (null, pickARooProofList.Item2);
+                                    }
+                                    else if (!DataExistsInDatabase(pickARooProofList.Item1))
+                                    {
+                                        _dbContext.Prooflist.AddRange(pickARooProofList.Item1);
+                                        _dbContext.SaveChanges();
+                                        return (pickARooProofList);
+                                    }
+                                    else
+                                    {
+                                        return (null, "Proof list already uploaded!");
+                                    }
+                                }
+                                else if (customerName == "FoodPanda")
+                                {
+                                    var foodPandaProofList = ExtractFoodPanda(worksheet, rowCount, row, customerName);
+                                    if (foodPandaProofList.Item1 == null)
+                                    {
+                                        return (null, foodPandaProofList.Item2);
+                                    }
+                                    else if (!DataExistsInDatabase(foodPandaProofList.Item1))
+                                    {
+                                        _dbContext.Prooflist.AddRange(foodPandaProofList.Item1);
+                                        _dbContext.SaveChanges();
+                                        return (foodPandaProofList);
+                                    }
+                                    else
+                                    {
+                                        return (null, "Proof list already uploaded!");
+                                    }
+                                }
+                                else if (customerName == "MetroMart")
+                                {
+                                    var metroMartProofList = ExtractMetroMart(worksheet, rowCount, row, customerName);
+                                    if (metroMartProofList.Item1 == null)
+                                    {
+                                        return (null, metroMartProofList.Item2);
+                                    }
+                                    else if (!DataExistsInDatabase(metroMartProofList.Item1))
+                                    {
+                                        _dbContext.Prooflist.AddRange(metroMartProofList.Item1);
+                                        _dbContext.SaveChanges();
+                                        return (metroMartProofList);
+                                    }
+                                    else
+                                    {
+                                        return (null, "Proof list already uploaded!");
+                                    }
                                 }
 
                                 return (null, "No worksheets found in the workbook.");
@@ -119,34 +176,77 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractGrab(ExcelWorksheet worksheet, int rowCount, int row)
+        private (List<Prooflist>, string?) ExtractGrabMartOrFood(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
         {
             var getLocation = _dbContext.Locations.ToList();
             var grabFoodProofList = new List<Prooflist>();
+            DateTime currentDate = DateTime.Now;
+            DateTime previousDate = currentDate.AddDays(-1);
+
+            // Define expected headers
+            string[] expectedHeaders = { "Store name", "Date created", "Type", "Status", "Short order ID", "Net sales" };
+
+            Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
+
             try
             {
+                // Find column indexes based on header names
+                for (int col = 1; col <= worksheet.Dimension.Columns; col++)
+                {
+                    var header = worksheet.Cells[1, col].Text.Trim();
+                    if (!string.IsNullOrEmpty(header))
+                    {
+                        columnIndexes[header] = col;
+                    }
+                }
+
+                // Check if all expected headers exist in the first row
+                foreach (var expectedHeader in expectedHeaders)
+                {
+                    if (!columnIndexes.ContainsKey(expectedHeader))
+                    {
+                        return (grabFoodProofList, $"Column not found.");
+                    }
+                }
+
                 for (row = 2; row <= rowCount; row++)
                 {
-                    if (worksheet.Cells[row, 6].Value != null ||
-                       worksheet.Cells[row, 16].Value != null ||
-                       worksheet.Cells[row, 40].Value != null ||
-                       worksheet.Cells[row, 10].Value != null ||
-                       worksheet.Cells[row, 3].Value != null)
+                    if (worksheet.Cells[row, columnIndexes["Net sales"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Short order ID"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Status"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Date created"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Store name"]].Value != null)
                     {
-                        var transactionDate = GetDateTime(worksheet.Cells[row, 6].Value);
-                        var patient = new Prooflist
+                       
+                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["Date created"]].Value);
+
+                        var chktransactionDate = new DateTime();
+                        if (transactionDate.HasValue)
                         {
-                            CustomerId = "9999011955",
-                            TransactionDate = transactionDate,
-                            OrderNo = worksheet.Cells[row, 16].Value?.ToString(),
-                            NonMembershipFee = (decimal?)0.00,
-                            PurchasedAmount = (decimal?)0.00,
-                            Amount = worksheet.Cells[row, 40].Value != null ? decimal.Parse(worksheet.Cells[row, 40].Value?.ToString()) : null,
-                            StatusId = worksheet.Cells[row, 10].Value?.ToString() == "Completed" || worksheet.Cells[row, 10].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, 10].Value?.ToString() == "Cancelled" ? 4 : null,
-                            StoreId = GetLocationId(worksheet.Cells[row, 3].Value?.ToString(), getLocation),
-                            DeleteFlag = false,
-                        };
-                        grabFoodProofList.Add(patient);
+                            chktransactionDate = transactionDate.Value.Date;
+                        }
+
+                        previousDate = previousDate.Date;
+                        if (previousDate == chktransactionDate)
+                        {
+                            var prooflist = new Prooflist
+                            {
+                                CustomerId = customerName == "GrabMart" ? "9999011955" : "9999011929",
+                                TransactionDate = transactionDate,
+                                OrderNo = worksheet.Cells[row, columnIndexes["Short order ID"]].Value?.ToString(),
+                                NonMembershipFee = (decimal?)0.00,
+                                PurchasedAmount = (decimal?)0.00,
+                                Amount = worksheet.Cells[row, columnIndexes["Net sales"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Net sales"]].Value?.ToString()) : null,
+                                StatusId = worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                                StoreId = GetLocationId(worksheet.Cells[row, columnIndexes["Store name"]].Value?.ToString(), getLocation),
+                                DeleteFlag = false,
+                            };
+                            grabFoodProofList.Add(prooflist);
+                        }
+                        else
+                        {
+                            return (null, "Uploaded file transaction dates do not match.");
+                        }
                     }
                 }
 
@@ -155,6 +255,248 @@ namespace CSI.Application.Services
             catch (Exception)
             {
                 return (grabFoodProofList, "Error extracting proof list.");
+            }
+        }
+
+        private (List<Prooflist>, string?) ExtractPickARoo(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        {
+            var pickARooProofList = new List<Prooflist>();
+            DateTime currentDate = DateTime.Now;
+            DateTime previousDate = currentDate.AddDays(-1);
+
+            // Define expected headers
+            string[] expectedHeaders = { "Order Date", "Order Number", "Order Status", "Amount" };
+
+            Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
+
+            try
+            {
+                // Find column indexes based on header names
+                for (int col = 1; col <= worksheet.Dimension.Columns; col++)
+                {
+                    var header = worksheet.Cells[1, col].Text.Trim();
+                    if (!string.IsNullOrEmpty(header))
+                    {
+                        columnIndexes[header] = col;
+                    }
+                }
+
+                // Check if all expected headers exist in the first row
+                foreach (var expectedHeader in expectedHeaders)
+                {
+                    if (!columnIndexes.ContainsKey(expectedHeader))
+                    {
+                        return (pickARooProofList, $"Column not found.");
+                    }
+                }
+
+                for (row = 2; row <= rowCount; row++)
+                {
+                    if (worksheet.Cells[row, columnIndexes["Order Date"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Order Number"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Order Status"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Amount"]].Value != null)
+                    {
+
+                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["Order Date"]].Value);
+
+                        var chktransactionDate = new DateTime();
+                        if (transactionDate.HasValue)
+                        {
+                            chktransactionDate = transactionDate.Value.Date;
+                        }
+
+                        previousDate = previousDate.Date;
+                        if (previousDate == chktransactionDate)
+                        {
+                            var prooflist = new Prooflist
+                            {
+                                CustomerId = "9999011931",
+                                TransactionDate = transactionDate,
+                                OrderNo = worksheet.Cells[row, columnIndexes["Order Number"]].Value?.ToString(),
+                                NonMembershipFee = (decimal?)0.00,
+                                PurchasedAmount = (decimal?)0.00,
+                                Amount = worksheet.Cells[row, columnIndexes["Amount"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Amount"]].Value?.ToString()) : null,
+                                StatusId = worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                                StoreId = 0,
+                                DeleteFlag = false,
+                            };
+                            pickARooProofList.Add(prooflist);
+                        }
+                        else
+                        {
+                            return (null, "Uploaded file transaction dates do not match.");
+                        }
+                    }
+                }
+
+                return (pickARooProofList, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception)
+            {
+                return (pickARooProofList, "Error extracting proof list.");
+            }
+        }
+
+        private (List<Prooflist>, string?) ExtractFoodPanda(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        {
+            var foodPandaProofList = new List<Prooflist>();
+            DateTime currentDate = DateTime.Now;
+            DateTime previousDate = currentDate.AddDays(-1);
+
+            // Define expected headers
+            string[] expectedHeaders = { "Order ID", "Order status", "Delivered at", "Subtotal" };
+
+            Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
+
+            try
+            {
+                // Find column indexes based on header names
+                for (int col = 1; col <= worksheet.Dimension.Columns; col++)
+                {
+                    var header = worksheet.Cells[1, col].Text.Trim();
+                    if (!string.IsNullOrEmpty(header))
+                    {
+                        columnIndexes[header] = col;
+                    }
+                }
+
+                // Check if all expected headers exist in the first row
+                foreach (var expectedHeader in expectedHeaders)
+                {
+                    if (!columnIndexes.ContainsKey(expectedHeader))
+                    {
+                        return (foodPandaProofList, $"Column not found.");
+                    }
+                }
+
+                for (row = 2; row <= rowCount; row++)
+                {
+                    if (worksheet.Cells[row, columnIndexes["Order ID"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Order status"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Delivered at"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Subtotal"]].Value != null)
+                    {
+
+                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["Delivered at"]].Value);
+
+                        var chktransactionDate = new DateTime();
+                        if (transactionDate.HasValue)
+                        {
+                            chktransactionDate = transactionDate.Value.Date;
+                        }
+
+                        previousDate = previousDate.Date;
+                        if (previousDate == chktransactionDate)
+                        {
+                            var prooflist = new Prooflist
+                            {
+                                CustomerId = "9999011959",
+                                TransactionDate = transactionDate,
+                                OrderNo = worksheet.Cells[row, columnIndexes["Order ID"]].Value?.ToString(),
+                                NonMembershipFee = (decimal?)0.00,
+                                PurchasedAmount = (decimal?)0.00,
+                                Amount = worksheet.Cells[row, columnIndexes["Subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Subtotal"]].Value?.ToString()) : null,
+                                StatusId = worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                                StoreId = 0,
+                                DeleteFlag = false,
+                            };
+                            foodPandaProofList.Add(prooflist);
+                        }
+                        else
+                        {
+                            return (null, "Uploaded file transaction dates do not match.");
+                        }
+                    }
+                }
+
+                return (foodPandaProofList, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception)
+            {
+                return (foodPandaProofList, "Error extracting proof list.");
+            }
+        }
+
+        private (List<Prooflist>, string?) ExtractMetroMart(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        {
+            var metroMartProofList = new List<Prooflist>();
+            DateTime currentDate = DateTime.Now;
+            DateTime previousDate = currentDate.AddDays(-1);
+
+            // Define expected headers
+            string[] expectedHeaders = { "JO #", "JO delivery status", "Completed Date", "Non membership fee", "Purchased amount" };
+
+            Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
+
+            try
+            {
+                // Find column indexes based on header names
+                for (int col = 1; col <= worksheet.Dimension.Columns; col++)
+                {
+                    var header = worksheet.Cells[1, col].Text.Trim();
+                    if (!string.IsNullOrEmpty(header))
+                    {
+                        columnIndexes[header] = col;
+                    }
+                }
+
+                // Check if all expected headers exist in the first row
+                foreach (var expectedHeader in expectedHeaders)
+                {
+                    if (!columnIndexes.ContainsKey(expectedHeader))
+                    {
+                        return (metroMartProofList, $"Column not found.");
+                    }
+                }
+
+                for (row = 2; row <= rowCount; row++)
+                {
+                    if (worksheet.Cells[row, columnIndexes["JO #"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["JO delivery status"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Completed Date"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Non membership fee"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["Purchased amount"]].Value != null)
+                    {
+
+                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["Completed Date"]].Value);
+                        decimal NonMembershipFee = worksheet.Cells[row, columnIndexes["Non membership fee"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Non membership fee"]].Value?.ToString()) : 0;
+                        decimal PurchasedAmount = worksheet.Cells[row, columnIndexes["Purchased amount"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Purchased amount"]].Value?.ToString()) : 0;
+                        var chktransactionDate = new DateTime();
+                        if (transactionDate.HasValue)
+                        {
+                            chktransactionDate = transactionDate.Value.Date;
+                        }
+
+                        previousDate = previousDate.Date;
+                        if (previousDate == chktransactionDate)
+                        {
+                            var prooflist = new Prooflist
+                            {
+                                CustomerId = "9999011855",
+                                TransactionDate = transactionDate,
+                                OrderNo = worksheet.Cells[row, columnIndexes["JO #"]].Value?.ToString(),
+                                NonMembershipFee = NonMembershipFee,
+                                PurchasedAmount = PurchasedAmount,
+                                Amount = NonMembershipFee + PurchasedAmount,
+                                StatusId = worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                                StoreId = 0,
+                                DeleteFlag = false,
+                            };
+                            metroMartProofList.Add(prooflist);
+                        }
+                        else
+                        {
+                            return (null, "Uploaded file transaction dates do not match.");
+                        }
+                    }
+                }
+
+                return (metroMartProofList, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception)
+            {
+                return (metroMartProofList, "Error extracting proof list.");
             }
         }
 
@@ -202,126 +544,5 @@ namespace CSI.Application.Services
 
             return result;
         }
-
-
-        //private (List<Prooflist>, string?) ReadMetromart(string filePath)
-        //{
-        //    int row = 2;
-        //    int rowCount = 0;
-        //    var metroMartProofList = new List<Prooflist>();
-
-        //    try
-        //    {
-        //        using (var parser = new TextFieldParser(filePath))
-        //        {
-        //            parser.TextFieldType = FieldType.Delimited;
-        //            parser.SetDelimiters(",");
-
-        //            if (!parser.EndOfData)
-        //            {
-        //                parser.ReadLine(); 
-        //            }
-
-        //            while (!parser.EndOfData)
-        //            {
-        //                string[] fields = parser.ReadFields();
-
-        //                var transactionDate = DateTime.Parse(fields[3]);
-        //                var amount = decimal.Parse(fields[5]) + decimal.Parse(fields[6]);
-        //                var patient = new Prooflist
-        //                {
-        //                    CustomerId = "9999011855",
-        //                    TransactionDate = transactionDate,
-        //                    OrderNo = fields[1],
-        //                    OrderAmount = amount, 
-        //                    StatusId = fields[2] == "Completed" ? 3 : fields[2] == "Cancelled" ? 4 : null,
-        //                    StoreName = null,
-        //                    DeleteFlag = false,
-        //                };
-
-        //                metroMartProofList.Add(patient);
-        //                rowCount++;
-        //            }
-        //        }
-
-        //        return (metroMartProofList, rowCount.ToString() + " rows extracted");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return (null, $"Please check error in row {row}: {ex.Message}");
-        //        throw;
-        //    }
-        //}
-
-        //private (List<Prooflist>, string?) ReadPickARoo(string filePath)
-        //{
-        //    int row = 2;
-        //    int rowCount = 0;
-        //    var pickARooProofList = new List<Prooflist>();
-
-        //    try
-        //    {
-        //        using (var parser = new TextFieldParser(filePath))
-        //        {
-        //            parser.TextFieldType = FieldType.Delimited;
-        //            parser.SetDelimiters(",");
-
-        //            // Assuming the first row contains headers, and you want to skip it
-        //            if (!parser.EndOfData)
-        //            {
-        //                parser.ReadLine(); // Skip header row
-        //            }
-
-        //            while (!parser.EndOfData)
-        //            {
-        //                string[] fields = parser.ReadFields();
-
-        //                var transactionDate = DateTime.Parse(fields[0]); // Assuming the date is in the first column
-        //                var patient = new Prooflist
-        //                {
-        //                    CustomerId = "9999011931",
-        //                    TransactionDate = transactionDate,
-        //                    OrderNo = fields[1],
-        //                    OrderAmount = decimal.Parse(fields[3]), // Assuming the order amount is in the fourth column
-        //                    StatusId = fields[2] == "Completed" ? 3 : fields[2] == "Cancelled" ? 4 : null,
-        //                    StoreName = null,
-        //                    DeleteFlag = false,
-        //                };
-
-        //                pickARooProofList.Add(patient);
-        //                rowCount++;
-        //            }
-        //        }
-
-        //        return (pickARooProofList, rowCount.ToString() + " rows extracted");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return (null, $"Please check error in row {row}: {ex.Message}");
-        //    }
-        //}
-
-        //private (List<Prooflist>, string?) ReadFoodPanda(ExcelWorksheet worksheet, int rowCount, int row)
-        //{
-        //    var grabFoodProofList = new List<Prooflist>();
-        //    for (row = 3; row <= rowCount; row++)
-        //    {
-        //        DateTime.TryParse(worksheet.Cells[row, 15].Value?.ToString(), out var transactionDate);
-        //        var patient = new Prooflist
-        //        {
-        //            CustomerId = "9999011838",
-        //            TransactionDate = transactionDate,
-        //            OrderNo = worksheet.Cells[row, 2].Value.ToString(),
-        //            OrderAmount = decimal.Parse(worksheet.Cells[row, 19].Value.ToString()),
-        //            StatusId = worksheet.Cells[row, 7].Value.ToString() == "Completed" || worksheet.Cells[row, 7].Value.ToString() == "Delivered" ? 3 : worksheet.Cells[row, 7].Value.ToString() == "Cancelled" ? 4 : null,
-        //            StoreName = worksheet.Cells[row, 1].Value.ToString(),
-        //            DeleteFlag = false,
-        //        };
-
-        //        grabFoodProofList.Add(patient);
-        //    }
-
-        //    return (grabFoodProofList, rowCount.ToString() + " rows extracted");
-        //}
     }
 }

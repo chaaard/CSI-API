@@ -11,7 +11,7 @@ namespace CSI.Application.Interfaces
 {
     public interface IProofListService
     {
-        (List<Prooflist>?, string?) ReadProofList(IFormFile file);
+        (List<Prooflist>?, string?) ReadProofList(IFormFile file, string customerName);
         Task<List<PortalDto>> GetPortal(PortalParamsDto portalParamsDto);
     }
 }
