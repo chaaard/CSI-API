@@ -28,38 +28,6 @@ namespace CSI.Application.Services
 
         }
 
-        private async Task DropTables(string strStamp)
-        {
-            try
-            {
-                if (_dbContext.Database.GetDbConnection().State == ConnectionState.Closed)
-                {
-                    await _dbContext.Database.GetDbConnection().OpenAsync();
-                }
-
-                var tableNames = new[]
-                {
-                    $"ANALYTICS_CSHTND{strStamp}",
-                    $"ANALYTICS_CSHHDR{strStamp}",
-                    $"ANALYTICS_CONDTX{strStamp}",
-                    $"ANALYTICS_INVMST{strStamp}",
-                    $"ANALYTICS_TBLSTR{strStamp}"
-                };
-
-                foreach (var tableName in tableNames)
-                {
-                    await _dbContext.Database.ExecuteSqlRawAsync($"IF OBJECT_ID('{tableName}', 'U') IS NOT NULL DROP TABLE {tableName}");
-                }
-
-                await _dbContext.Database.GetDbConnection().CloseAsync();
-            }
-            catch (Exception)
-            {
-                await _dbContext.Database.GetDbConnection().CloseAsync();
-                throw;
-            }
-        }
-
         public async Task<List<int>> GetDepartments()
         {
             try
@@ -81,26 +49,31 @@ namespace CSI.Application.Services
         }
 
         public async Task<List<AnalyticsDto>> GetAnalytics(AnalyticsParamsDto analyticsParamsDto)
-        { 
-            var result = await _dbContext.Analytics.Where(x => x.TransactionDate == analyticsParamsDto.dates[0] && x.LocationId == analyticsParamsDto.storeId[0] && x.CustomerId == analyticsParamsDto.memCode[0])
-                .Join(_dbContext.Locations, analytics => analytics.LocationId, location => location.LocationCode, (analytics, location) => new { analytics, location })
-                .Select(n => new AnalyticsDto { 
-                    Id = n.analytics.Id,
-                    CustomerId = n.analytics.CustomerId,
-                    LocationName = n.location.LocationName,
-                    TransactionDate = n.analytics.TransactionDate,
-                    MembershipNo = n.analytics.MembershipNo,
-                    CashierNo = n.analytics.CashierNo,
-                    RegisterNo = n.analytics.RegisterNo,
-                    TransactionNo = n.analytics.TransactionNo,
-                    OrderNo = n.analytics.OrderNo,
-                    Qty = n.analytics.Qty,
-                    Amount = n.analytics.Amount,
-                    UserId = n.analytics.UserId,
-                    DeleteFlag = n.analytics.DeleteFlag,
-                })
-                .ToListAsync();
-
+        {
+            DateTime date;
+            var result = new List<AnalyticsDto>();
+            if (DateTime.TryParse(analyticsParamsDto.dates[0], out date))
+            {
+                result = await _dbContext.Analytics.Where(x => x.TransactionDate == date && x.LocationId == analyticsParamsDto.storeId[0] && x.CustomerId == analyticsParamsDto.memCode[0])
+                 .Join(_dbContext.Locations, analytics => analytics.LocationId, location => location.LocationCode, (analytics, location) => new { analytics, location })
+                 .Select(n => new AnalyticsDto
+                 {
+                     Id = n.analytics.Id,
+                     CustomerId = n.analytics.CustomerId,
+                     LocationName = n.location.LocationName,
+                     TransactionDate = n.analytics.TransactionDate,
+                     MembershipNo = n.analytics.MembershipNo,
+                     CashierNo = n.analytics.CashierNo,
+                     RegisterNo = n.analytics.RegisterNo,
+                     TransactionNo = n.analytics.TransactionNo,
+                     OrderNo = n.analytics.OrderNo,
+                     Qty = n.analytics.Qty,
+                     Amount = n.analytics.Amount,
+                     UserId = n.analytics.UserId,
+                     DeleteFlag = n.analytics.DeleteFlag,
+                 })
+                 .ToListAsync();
+            }
             return result;
         }
 
@@ -136,7 +109,7 @@ namespace CSI.Application.Services
                         $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = a.LocationId " +
                         $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = a.CustomerId " +
                         $"        WHERE " +
-                        $"            (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0]}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}') " +
+                        $"            (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}') " +
                         $"    ) a " +
                         $"FULL OUTER JOIN " +
                         $"    ( " +
@@ -152,7 +125,7 @@ namespace CSI.Application.Services
                         $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
                         $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId " +
                         $"        WHERE " +
-                        $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0]}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL) " +
+                        $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL) " +
                         $"    ) p " +
                         $"ON a.[OrderNo] = p.[OrderNo];")
                     .ToListAsync();
