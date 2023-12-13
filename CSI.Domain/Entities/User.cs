@@ -15,6 +15,8 @@ namespace CSI.Domain.Entities
         public string Username { get; set; } = string.Empty;
         public string Salt { get; set; } = string.Empty;
         public string Hash { get; set; } = string.Empty;
+        public int Club { get; set; }
+        public int RoleId { get; set; }
         public bool IsLogin { get; set; }
     }
 }

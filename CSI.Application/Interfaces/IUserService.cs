@@ -13,5 +13,6 @@ namespace CSI.Application.Interfaces
         Task<UserDto> AuthenticateAsync(string username, string password);
         Task<UserDto> AuthenticateADAsync();
         Task<UserDto> Logout(string username);
+        Task<UserInfoDto> GetUserInfo(string username);
     }
 }

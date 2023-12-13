@@ -26,6 +26,7 @@ namespace CSI.Infrastructure.Data
             AnalyticsProoflist = Set<AnalyticsProoflist>();
             Actions = Set<Actions>();
             Match = Set<Match>();
+            Roles = Set<Roles>();
         }
 
         public DbSet<User> Users { get; set; }
@@ -41,6 +42,7 @@ namespace CSI.Infrastructure.Data
         public DbSet<Actions> Actions { get; set; }
         public DbSet<Reasons> Reasons { get; set; }
         public DbSet<Match> Match { get; set; }
+        public DbSet<Roles> Roles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -82,6 +84,9 @@ namespace CSI.Infrastructure.Data
 
             modelBuilder.Entity<Match>()
             .HasNoKey();
+
+            modelBuilder.Entity<Roles>()
+            .ToTable("tbl_role");
         }
     }
 }
