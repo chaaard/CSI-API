@@ -175,5 +175,32 @@ namespace CSI.Application.Services
                 throw;
             }
         }
+
+        public async Task<TransactionDtos> GetTotalCountAmount(TransactionCountAmountDto transactionCountAmountDto)
+        {
+            DateTime date1;
+            DateTime date2;
+            DateTime.TryParse(transactionCountAmountDto.dates[0], out date1);
+            DateTime.TryParse(transactionCountAmountDto.dates[1], out date2);
+
+            var result = await _dbContext.AnalyticsProoflist
+                 .Where(ap => ap.ActionId == transactionCountAmountDto.actionId && ap.StatusId == transactionCountAmountDto.statusId)
+                 .Join(
+                     _dbContext.Analytics,
+                     ap => ap.AnalyticsId,
+                     a => a.Id,
+                     (ap, a) => new { ap, a }
+                 )
+                 .Where(joined => joined.a.LocationId == transactionCountAmountDto.storeId[0] && joined.a.TransactionDate >= date1 && joined.a.TransactionDate <= date2)
+                 .GroupBy(joined => new { joined.ap.ActionId })
+                 .Select(grouped => new TransactionDtos
+                 {
+                     Count = grouped.Count(),
+                     Amount = grouped.Sum(j => j.a.Amount)
+                 })
+                 .FirstOrDefaultAsync();
+
+            return result ?? new TransactionDtos();
+        }
     }
 }

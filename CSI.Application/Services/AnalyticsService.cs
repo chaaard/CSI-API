@@ -77,6 +77,19 @@ namespace CSI.Application.Services
             return result;
         }
 
+        public async Task<decimal?> GetTotalAmountPerMechant(AnalyticsParamsDto analyticsParamsDto)
+        {
+            DateTime date;
+            decimal? result = 0;
+            if (DateTime.TryParse(analyticsParamsDto.dates[0], out date))
+            {
+                result = await _dbContext.Analytics
+                    .Where(x => x.TransactionDate == date && x.LocationId == analyticsParamsDto.storeId[0] && analyticsParamsDto.memCode[0].Contains(x.CustomerId))
+                    .SumAsync(e => e.Amount);
+            }
+            return result;
+        }
+
 
         public async Task<List<MatchDto>> GetAnalyticsProofListVariance(AnalyticsParamsDto analyticsParamsDto)
         {

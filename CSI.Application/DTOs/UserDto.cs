@@ -13,6 +13,10 @@ namespace CSI.Application.DTOs
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
+        public string Salt { get; set; } = string.Empty;
+        public string Hash { get; set; } = string.Empty;
+        public int RoleId { get; set; }
+        public int Club { get; set; }
         public bool IsLogin { get; set; }
         public string Token { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;

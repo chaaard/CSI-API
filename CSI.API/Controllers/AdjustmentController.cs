@@ -82,5 +82,17 @@ namespace CSI.API.Controllers
             }
             return (NotFound());
         }
+
+        [HttpPost("GetTotalCountAmount")]
+        public async Task<IActionResult> GetTotalCountAmount(TransactionCountAmountDto transactionCountAmountDto)
+        {
+            var result = await _adjustmentService.GetTotalCountAmount(transactionCountAmountDto);
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
     }
 }

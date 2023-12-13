@@ -60,6 +60,8 @@ namespace CSI.Application.Services
                                 LastName = result.LastName,
                                 Username = result.Username,
                                 IsLogin = result.IsLogin,
+                                RoleId = result.RoleId,
+                                Club = result.Club,
                                 Token = Token,
                                 Message = "Login Successful"
                             };
@@ -76,6 +78,8 @@ namespace CSI.Application.Services
                         LastName = result.LastName,
                         Username = result.Username,
                         IsLogin = result.IsLogin,
+                        RoleId = result.RoleId,
+                        Club = result.Club,
                         Token = Token,
                         Message = "User is already logged in."
                     };
@@ -129,6 +133,8 @@ namespace CSI.Application.Services
                                     LastName = userInDb.LastName,
                                     Username = userInDb.Username,
                                     IsLogin = userInDb.IsLogin,
+                                    RoleId = userInDb.RoleId,
+                                    Club = userInDb.Club,
                                     Token = Token,
                                     Message = "Login Successful"
                                 };
@@ -143,6 +149,8 @@ namespace CSI.Application.Services
                                     LastName = userInDb.LastName,
                                     Username = userInDb.Username,
                                     IsLogin = userInDb.IsLogin,
+                                    RoleId = userInDb.RoleId,
+                                    Club = userInDb.Club,
                                     Token = Token,
                                     Message = "User is already logged in."
                                 };
@@ -182,6 +190,8 @@ namespace CSI.Application.Services
                             LastName = result.LastName,
                             Username = result.Username,
                             IsLogin = result.IsLogin,
+                            RoleId = result.RoleId,
+                            Club = result.Club,
                             Token = "",
                             Message = "Logout Successful"
                         };
@@ -192,6 +202,31 @@ namespace CSI.Application.Services
             else
             {
                 return new UserDto();
+            }
+        }
+
+        public async Task<UserInfoDto> GetUserInfo(string username)
+        {
+            var result = new UserInfoDto();
+            if (username != null)
+            {
+                
+                result = await _dbContext.Users
+                    .Where(u => u.Username == username)
+                    .Join(_dbContext.Roles, a => a.RoleId, b => b.Id, (a, b) => new { a,b })
+                    .Join(_dbContext.Locations, c => c.a.Club, d => d.LocationCode, (c, d) => new { c,d })
+                    .Select(n => new UserInfoDto 
+                    {
+                        Role = n.c.b.Role,
+                        Club = n.d.LocationName,
+                    })
+                    .FirstOrDefaultAsync();
+
+                return result;
+            }
+            else
+            {
+                return result;
             }
         }
     }

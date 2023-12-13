@@ -98,5 +98,17 @@ namespace CSI.API.Controllers
             }
             return Task.FromResult<IActionResult>(NotFound());
         }
+
+        [HttpPost("GetUserInfo")]
+        public async Task<IActionResult> GetUserInfo([FromForm] string username)
+        {
+            var getUserInfo = await _userService.GetUserInfo(username);
+
+            if (getUserInfo != null)
+            {
+                return Ok(getUserInfo);
+            }
+            return NotFound();
+        }
     }
 }
