@@ -95,5 +95,11 @@ namespace CSI.API.Controllers
                 return StatusCode(500, $"Internal Server Error: {ex.Message}");
             }
         }
+
+        [HttpPost("RefreshAnalytics")]
+        public async Task RefreshAnalytics(RefreshAnalyticsDto refreshAnalyticsDto)
+        {
+            await _analyticsService.RefreshAnalytics(refreshAnalyticsDto);
+        }
     }
 }

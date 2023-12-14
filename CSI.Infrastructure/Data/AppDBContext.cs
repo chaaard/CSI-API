@@ -25,8 +25,10 @@ namespace CSI.Infrastructure.Data
             Adjustments = Set<Adjustments>();
             AnalyticsProoflist = Set<AnalyticsProoflist>();
             Actions = Set<Actions>();
+            Reasons = Set<Reasons>();
             Match = Set<Match>();
             Roles = Set<Roles>();
+            AnalyticsView = Set<AnalyticsView>();
         }
 
         public DbSet<User> Users { get; set; }
@@ -43,6 +45,7 @@ namespace CSI.Infrastructure.Data
         public DbSet<Reasons> Reasons { get; set; }
         public DbSet<Match> Match { get; set; }
         public DbSet<Roles> Roles { get; set; }
+        public DbSet<AnalyticsView> AnalyticsView { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -83,6 +86,9 @@ namespace CSI.Infrastructure.Data
             .ToTable("tbl_reason");
 
             modelBuilder.Entity<Match>()
+            .HasNoKey();
+
+            modelBuilder.Entity<AnalyticsView>()
             .HasNoKey();
 
             modelBuilder.Entity<Roles>()
