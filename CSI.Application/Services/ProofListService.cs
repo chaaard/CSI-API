@@ -130,9 +130,93 @@ namespace CSI.Application.Services
                             }
                         }
                     }
+                    else if(file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var tempCsvFilePath = Path.GetTempFileName() + ".csv";
+
+                        using (var fileStream = new FileStream(tempCsvFilePath, FileMode.Create))
+                        {
+                            file.CopyTo(fileStream);
+                        }
+
+                        if (customerName == "GrabMart" || customerName == "GrabFood")
+                        {
+                            var grabProofList = ExtractCSVGrabMartOrFood(tempCsvFilePath, customerName);
+                            if (grabProofList.Item1 == null)
+                            {
+                                return (null, grabProofList.Item2);
+                            }
+                            else if (!DataExistsInDatabase(grabProofList.Item1))
+                            {
+                                _dbContext.Prooflist.AddRange(grabProofList.Item1);
+                                _dbContext.SaveChanges();
+                                return (grabProofList);
+                            }
+                            else
+                            {
+                                return (null, "Proof list already uploaded!");
+                            }
+                        }
+                        else if (customerName == "PickARoo")
+                        {
+                            var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath);
+                            if (pickARooProofList.Item1 == null)
+                            {
+                                return (null, pickARooProofList.Item2);
+                            }
+                            else if (!DataExistsInDatabase(pickARooProofList.Item1))
+                            {
+                                _dbContext.Prooflist.AddRange(pickARooProofList.Item1);
+                                _dbContext.SaveChanges();
+                                return (pickARooProofList);
+                            }
+                            else
+                            {
+                                return (null, "Proof list already uploaded!");
+                            }
+                        }
+                        else if (customerName == "FoodPanda")
+                        {
+                            var foodPandaProofList = ExtractCSVFoodPanda(tempCsvFilePath);
+                            if (foodPandaProofList.Item1 == null)
+                            {
+                                return (null, foodPandaProofList.Item2);
+                            }
+                            else if (!DataExistsInDatabase(foodPandaProofList.Item1))
+                            {
+                                _dbContext.Prooflist.AddRange(foodPandaProofList.Item1);
+                                _dbContext.SaveChanges();
+                                return (foodPandaProofList);
+                            }
+                            else
+                            {
+                                return (null, "Proof list already uploaded!");
+                            }
+                        }
+                        else if (customerName == "MetroMart")
+                        {
+                            var metroMartProofList = ExtractCSVMetroMart(tempCsvFilePath);
+                            if (metroMartProofList.Item1 == null)
+                            {
+                                return (null, metroMartProofList.Item2);
+                            }
+                            else if (!DataExistsInDatabase(metroMartProofList.Item1))
+                            {
+                                _dbContext.Prooflist.AddRange(metroMartProofList.Item1);
+                                _dbContext.SaveChanges();
+                                return (metroMartProofList);
+                            }
+                            else
+                            {
+                                return (null, "Proof list already uploaded!");
+                            }
+                        }
+
+                        return (null, "No worksheets.");
+                    }
                     else
                     {
-                        return (null, "Unsupported file format. Only XLSX and CSV formats are supported.");
+                        return (null, "No worksheets.");
                     }
                 } 
             }
@@ -391,7 +475,7 @@ namespace CSI.Application.Services
                         {
                             var prooflist = new Prooflist
                             {
-                                CustomerId = "9999011959",
+                                CustomerId = "9999011838",
                                 TransactionDate = transactionDate,
                                 OrderNo = worksheet.Cells[row, columnIndexes["Order ID"]].Value?.ToString(),
                                 NonMembershipFee = (decimal?)0.00,
@@ -500,6 +584,208 @@ namespace CSI.Application.Services
             }
         }
 
+        private (List<Prooflist>, string?) ExtractCSVGrabMartOrFood(string filePath, string customerName)
+        {
+            int row = 2;
+            int rowCount = 0;
+            var grabFoodProofLists = new List<Prooflist>();
+
+            try
+            {
+                using (var parser = new TextFieldParser(filePath))
+                {
+                    parser.TextFieldType = FieldType.Delimited;
+                    parser.SetDelimiters(",");
+
+                    if (!parser.EndOfData)
+                    {
+                        parser.ReadLine();
+                    }
+
+                    while (!parser.EndOfData)
+                    {
+                        string[] fields = parser.ReadFields();
+
+                        var transactionDate = DateTime.Parse(fields[6]);
+                        var grabfood = new Prooflist
+                        {
+                            CustomerId = customerName == "GrabMart" ? "9999011955" : "9999011929",
+                            TransactionDate = transactionDate,
+                            OrderNo = fields[15],
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = decimal.Parse(fields[39]),
+                            StatusId = fields[9] == "Completed" || fields[9] == "Completed" ? 3 : fields[9] == "Cancelled" ? 4 : null,
+                            StoreId = null,
+                            DeleteFlag = false,
+                        };
+
+                        grabFoodProofLists.Add(grabfood);
+                        rowCount++;
+                    }
+                }
+
+                return (grabFoodProofLists, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception ex)
+            {
+                return (null, $"Please check error in row {row}: {ex.Message}");
+                throw;
+            }
+        }
+
+        private (List<Prooflist>, string?) ExtractCSVMetroMart(string filePath)
+        {
+            int row = 2;
+            int rowCount = 0;
+            var metroMartProofLists = new List<Prooflist>();
+
+            try
+            {
+                using (var parser = new TextFieldParser(filePath))
+                {
+                    parser.TextFieldType = FieldType.Delimited;
+                    parser.SetDelimiters(",");
+
+                    if (!parser.EndOfData)
+                    {
+                        parser.ReadLine();
+                    }
+
+                    while (!parser.EndOfData)
+                    {
+                        string[] fields = parser.ReadFields();
+
+                        var transactionDate = DateTime.Parse(fields[3]);
+                        var amount = decimal.Parse(fields[5]) + decimal.Parse(fields[6]);
+                        var metroMart = new Prooflist
+                        {
+                            CustomerId = "9999011855",
+                            TransactionDate = transactionDate,
+                            OrderNo = fields[1],
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = amount,
+                            StatusId = fields[2] == "Completed" || fields[2] == "Completed" ? 3 : fields[2] == "Cancelled" ? 4 : null,
+                            StoreId = null,
+                            DeleteFlag = false,
+                        };
+
+                        metroMartProofLists.Add(metroMart);
+                        rowCount++;
+                    }
+                }
+
+                return (metroMartProofLists, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception ex)
+            {
+                return (null, $"Please check error in row {row}: {ex.Message}");
+                throw;
+            }
+        }
+
+        private (List<Prooflist>, string?) ExtractCSVPickARoo(string filePath)
+        {
+            int row = 2;
+            int rowCount = 0;
+            var pickARooProofLists = new List<Prooflist>();
+
+            try
+            {
+                using (var parser = new TextFieldParser(filePath))
+                {
+                    parser.TextFieldType = FieldType.Delimited;
+                    parser.SetDelimiters(",");
+
+                    if (!parser.EndOfData)
+                    {
+                        parser.ReadLine();
+                    }
+
+                    while (!parser.EndOfData)
+                    {
+                        string[] fields = parser.ReadFields();
+
+                        var transactionDate = DateTime.Parse(fields[0]);
+                        var pickARoo = new Prooflist
+                        {
+                            CustomerId = "9999011931",
+                            TransactionDate = transactionDate,
+                            OrderNo = fields[1],
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = decimal.Parse(fields[3]),
+                            StatusId = fields[2] == "Completed" || fields[2] == "Completed" ? 3 : fields[2] == "Cancelled" ? 4 : null,
+                            StoreId = null,
+                            DeleteFlag = false,
+                        };
+
+                        pickARooProofLists.Add(pickARoo);
+                        rowCount++;
+                    }
+                }
+
+                return (pickARooProofLists, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception ex)
+            {
+                return (null, $"Please check error in row {row}: {ex.Message}");
+                throw;
+            }
+        }
+
+        private (List<Prooflist>, string?) ExtractCSVFoodPanda(string filePath)
+        {
+            int row = 2;
+            int rowCount = 0;
+            var foodPandaProofLists = new List<Prooflist>();
+
+            try
+            {
+                using (var parser = new TextFieldParser(filePath))
+                {
+                    parser.TextFieldType = FieldType.Delimited;
+                    parser.SetDelimiters(",");
+
+                    if (!parser.EndOfData)
+                    {
+                        parser.ReadLine();
+                    }
+
+                    while (!parser.EndOfData)
+                    {
+                        string[] fields = parser.ReadFields();
+
+                        var transactionDate = DateTime.Parse(fields[14]);
+                        var foodPanda = new Prooflist
+                        {
+                            CustomerId = "9999011838",
+                            TransactionDate = transactionDate,
+                            OrderNo = fields[1],
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = decimal.Parse(fields[18]),
+                            StatusId = fields[6] == "Completed" || fields[6] == "Completed" ? 3 : fields[6] == "Cancelled" ? 4 : null,
+                            StoreId = null,
+                            DeleteFlag = false,
+                        };
+
+                        foodPandaProofLists.Add(foodPanda);
+                        rowCount++;
+                    }
+                }
+
+                return (foodPandaProofLists, rowCount.ToString() + " rows extracted");
+            }
+            catch (Exception ex)
+            {
+                return (null, $"Please check error in row {row}: {ex.Message}");
+                throw;
+            }
+        }
+
+
         public int? GetLocationId(string? location, List<Location> locations)
         {
             if (location != null || location != string.Empty)
@@ -512,7 +798,7 @@ namespace CSI.Application.Services
                 return getLocationCode;
             }
             else
-            { 
+            {
                 return null;
             }
         }

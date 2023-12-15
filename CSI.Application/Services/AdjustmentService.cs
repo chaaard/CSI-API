@@ -46,7 +46,7 @@ namespace CSI.Application.Services
                     CustomerId = x.Customer.CustomerName,
                     JoNumber = x.Adjustment.NewJO != null ? x.Adjustment.NewJO : x.a.OrderNo,
                     TransactionDate = x.a.TransactionDate,
-                    Amount = x.a.Amount,
+                    Amount = x.a.SubTotal,
                     AdjustmentType = x.Action.Action,
                     Status = x.Status.StatusName
                 })
@@ -196,7 +196,7 @@ namespace CSI.Application.Services
                  .Select(grouped => new TransactionDtos
                  {
                      Count = grouped.Count(),
-                     Amount = grouped.Sum(j => j.a.Amount)
+                     Amount = grouped.Sum(j => j.a.SubTotal)
                  })
                  .FirstOrDefaultAsync();
 
