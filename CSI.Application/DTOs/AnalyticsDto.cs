@@ -19,6 +19,7 @@ namespace CSI.Application.DTOs
         public string? OrderNo { get; set; } = string.Empty;
         public int? Qty { get; set; }
         public decimal? Amount { get; set; }
+        public decimal? SubTotal { get; set; }
         public Guid? UserId { get; set; }
         public bool? DeleteFlag { get; set; }
     }
