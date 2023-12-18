@@ -266,8 +266,6 @@ namespace CSI.Application.Services
         {
             var getLocation = _dbContext.Locations.ToList();
             var grabFoodProofList = new List<Prooflist>();
-            DateTime currentDate = DateTime.Now;
-            DateTime previousDate = currentDate.AddDays(-1);
 
             // Define expected headers
             string[] expectedHeaders = { "Store name", "Date created", "Type", "Status", "Short order ID", "Net sales" };
@@ -312,27 +310,19 @@ namespace CSI.Application.Services
                             chktransactionDate = transactionDate.Value.Date;
                         }
 
-                        previousDate = previousDate.Date;
-                        if (previousDate == chktransactionDate)
+                        var prooflist = new Prooflist
                         {
-                            var prooflist = new Prooflist
-                            {
-                                CustomerId = customerName == "GrabMart" ? "9999011955" : "9999011929",
-                                TransactionDate = transactionDate,
-                                OrderNo = worksheet.Cells[row, columnIndexes["Short order ID"]].Value?.ToString(),
-                                NonMembershipFee = (decimal?)0.00,
-                                PurchasedAmount = (decimal?)0.00,
-                                Amount = worksheet.Cells[row, columnIndexes["Net sales"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Net sales"]].Value?.ToString()) : null,
-                                StatusId = worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = club,
-                                DeleteFlag = false,
-                            };
-                            grabFoodProofList.Add(prooflist);
-                        }
-                        else
-                        {
-                            return (null, "Uploaded file transaction dates do not match.");
-                        }
+                            CustomerId = customerName == "GrabMart" ? "9999011955" : "9999011929",
+                            TransactionDate = transactionDate,
+                            OrderNo = worksheet.Cells[row, columnIndexes["Short order ID"]].Value?.ToString(),
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = worksheet.Cells[row, columnIndexes["Net sales"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Net sales"]].Value?.ToString()) : null,
+                            StatusId = worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                            StoreId = club,
+                            DeleteFlag = false,
+                        };
+                        grabFoodProofList.Add(prooflist);
                     }
                 }
 
@@ -347,8 +337,6 @@ namespace CSI.Application.Services
         private (List<Prooflist>, string?) ExtractPickARoo(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var pickARooProofList = new List<Prooflist>();
-            DateTime currentDate = DateTime.Now;
-            DateTime previousDate = currentDate.AddDays(-1);
 
             // Define expected headers
             string[] expectedHeaders = { "Order Date", "Order Number", "Order Status", "Amount" };
@@ -392,27 +380,19 @@ namespace CSI.Application.Services
                             chktransactionDate = transactionDate.Value.Date;
                         }
 
-                        previousDate = previousDate.Date;
-                        if (previousDate == chktransactionDate)
+                        var prooflist = new Prooflist
                         {
-                            var prooflist = new Prooflist
-                            {
-                                CustomerId = "9999011931",
-                                TransactionDate = transactionDate,
-                                OrderNo = worksheet.Cells[row, columnIndexes["Order Number"]].Value?.ToString(),
-                                NonMembershipFee = (decimal?)0.00,
-                                PurchasedAmount = (decimal?)0.00,
-                                Amount = worksheet.Cells[row, columnIndexes["Amount"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Amount"]].Value?.ToString()) : null,
-                                StatusId = worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = club,
-                                DeleteFlag = false,
-                            };
-                            pickARooProofList.Add(prooflist);
-                        }
-                        else
-                        {
-                            return (null, "Uploaded file transaction dates do not match.");
-                        }
+                            CustomerId = "9999011931",
+                            TransactionDate = transactionDate,
+                            OrderNo = worksheet.Cells[row, columnIndexes["Order Number"]].Value?.ToString(),
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = worksheet.Cells[row, columnIndexes["Amount"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Amount"]].Value?.ToString()) : null,
+                            StatusId = worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                            StoreId = club,
+                            DeleteFlag = false,
+                        };
+                        pickARooProofList.Add(prooflist);
                     }
                 }
 
@@ -427,8 +407,6 @@ namespace CSI.Application.Services
         private (List<Prooflist>, string?) ExtractFoodPanda(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var foodPandaProofList = new List<Prooflist>();
-            DateTime currentDate = DateTime.Now;
-            DateTime previousDate = currentDate.AddDays(-1);
 
             // Define expected headers
             string[] expectedHeaders = { "Order ID", "Order status", "Delivered at", "Subtotal" };
@@ -472,27 +450,19 @@ namespace CSI.Application.Services
                             chktransactionDate = transactionDate.Value.Date;
                         }
 
-                        previousDate = previousDate.Date;
-                        if (previousDate == chktransactionDate)
+                        var prooflist = new Prooflist
                         {
-                            var prooflist = new Prooflist
-                            {
-                                CustomerId = "9999011838",
-                                TransactionDate = transactionDate,
-                                OrderNo = worksheet.Cells[row, columnIndexes["Order ID"]].Value?.ToString(),
-                                NonMembershipFee = (decimal?)0.00,
-                                PurchasedAmount = (decimal?)0.00,
-                                Amount = worksheet.Cells[row, columnIndexes["Subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Subtotal"]].Value?.ToString()) : null,
-                                StatusId = worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = club,
-                                DeleteFlag = false,
-                            };
-                            foodPandaProofList.Add(prooflist);
-                        }
-                        else
-                        {
-                            return (null, "Uploaded file transaction dates do not match.");
-                        }
+                            CustomerId = "9999011838",
+                            TransactionDate = transactionDate,
+                            OrderNo = worksheet.Cells[row, columnIndexes["Order ID"]].Value?.ToString(),
+                            NonMembershipFee = (decimal?)0.00,
+                            PurchasedAmount = (decimal?)0.00,
+                            Amount = worksheet.Cells[row, columnIndexes["Subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Subtotal"]].Value?.ToString()) : null,
+                            StatusId = worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                            StoreId = club,
+                            DeleteFlag = false,
+                        };
+                        foodPandaProofList.Add(prooflist);
                     }
                 }
 
@@ -507,8 +477,6 @@ namespace CSI.Application.Services
         private (List<Prooflist>, string?) ExtractMetroMart(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var metroMartProofList = new List<Prooflist>();
-            DateTime currentDate = DateTime.Now;
-            DateTime previousDate = currentDate.AddDays(-1);
 
             // Define expected headers
             string[] expectedHeaders = { "JO #", "JO delivery status", "Completed Date", "Non membership fee", "Purchased amount" };
@@ -549,32 +517,20 @@ namespace CSI.Application.Services
                         decimal NonMembershipFee = worksheet.Cells[row, columnIndexes["Non membership fee"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Non membership fee"]].Value?.ToString()) : 0;
                         decimal PurchasedAmount = worksheet.Cells[row, columnIndexes["Purchased amount"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Purchased amount"]].Value?.ToString()) : 0;
                         var chktransactionDate = new DateTime();
-                        if (transactionDate.HasValue)
-                        {
-                            chktransactionDate = transactionDate.Value.Date;
-                        }
 
-                        previousDate = previousDate.Date;
-                        if (previousDate == chktransactionDate)
+                        var prooflist = new Prooflist
                         {
-                            var prooflist = new Prooflist
-                            {
-                                CustomerId = "9999011855",
-                                TransactionDate = transactionDate,
-                                OrderNo = worksheet.Cells[row, columnIndexes["JO #"]].Value?.ToString(),
-                                NonMembershipFee = NonMembershipFee,
-                                PurchasedAmount = PurchasedAmount,
-                                Amount = NonMembershipFee + PurchasedAmount,
-                                StatusId = worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = club,
-                                DeleteFlag = false,
-                            };
-                            metroMartProofList.Add(prooflist);
-                        }
-                        else
-                        {
-                            return (null, "Uploaded file transaction dates do not match.");
-                        }
+                            CustomerId = "9999011855",
+                            TransactionDate = transactionDate,
+                            OrderNo = worksheet.Cells[row, columnIndexes["JO #"]].Value?.ToString(),
+                            NonMembershipFee = NonMembershipFee,
+                            PurchasedAmount = PurchasedAmount,
+                            Amount = NonMembershipFee + PurchasedAmount,
+                            StatusId = worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                            StoreId = club,
+                            DeleteFlag = false,
+                        };
+                        metroMartProofList.Add(prooflist);
                     }
                 }
 
