@@ -19,11 +19,11 @@ namespace CSI.API.Controllers
         }
 
         [HttpPost("UploadProofList")]
-        public IActionResult UploadProofList(IFormFile file, [FromForm] string customerName)
+        public IActionResult UploadProofList(IFormFile file, [FromForm] string customerName, [FromForm] string strClub)
         {
             try
             {
-                var result =  _proofListService.ReadProofList(file, customerName);
+                var result =  _proofListService.ReadProofList(file, customerName, strClub);
                 return Ok(result);
             }
             catch (OperationCanceledException)

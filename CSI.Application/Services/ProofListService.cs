@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using CSI.Infrastructure.Data;
 using System.Security.Cryptography.X509Certificates;
 using CSI.Application.DTOs;
+using AutoMapper.Configuration.Annotations;
 
 namespace CSI.Application.Services
 {
@@ -28,10 +29,11 @@ namespace CSI.Application.Services
 
         }
 
-        public (List<Prooflist>?, string?) ReadProofList(IFormFile file, string customerName)
+        public (List<Prooflist>?, string?) ReadProofList(IFormFile file, string customerName, string strClub)
         {
             int row = 2;
             int rowCount = 0;
+            var club = Convert.ToInt32(strClub);
             try
             {
                 var patientList = new List<Prooflist>();
@@ -51,7 +53,7 @@ namespace CSI.Application.Services
                                 // Check if the filename contains the word "grabfood"
                                 if (customerName == "GrabMart" || customerName == "GrabFood")
                                 {
-                                    var grabProofList = ExtractGrabMartOrFood(worksheet, rowCount, row, customerName);
+                                    var grabProofList = ExtractGrabMartOrFood(worksheet, rowCount, row, customerName, club);
                                     if (grabProofList.Item1 == null)
                                     {
                                         return (null, grabProofList.Item2);
@@ -69,7 +71,7 @@ namespace CSI.Application.Services
                                 }
                                 else if (customerName == "PickARoo")
                                 {
-                                    var pickARooProofList = ExtractPickARoo(worksheet, rowCount, row, customerName);
+                                    var pickARooProofList = ExtractPickARoo(worksheet, rowCount, row, customerName, club);
                                     if (pickARooProofList.Item1 == null)
                                     {
                                         return (null, pickARooProofList.Item2);
@@ -87,7 +89,7 @@ namespace CSI.Application.Services
                                 }
                                 else if (customerName == "FoodPanda")
                                 {
-                                    var foodPandaProofList = ExtractFoodPanda(worksheet, rowCount, row, customerName);
+                                    var foodPandaProofList = ExtractFoodPanda(worksheet, rowCount, row, customerName, club);
                                     if (foodPandaProofList.Item1 == null)
                                     {
                                         return (null, foodPandaProofList.Item2);
@@ -105,7 +107,7 @@ namespace CSI.Application.Services
                                 }
                                 else if (customerName == "MetroMart")
                                 {
-                                    var metroMartProofList = ExtractMetroMart(worksheet, rowCount, row, customerName);
+                                    var metroMartProofList = ExtractMetroMart(worksheet, rowCount, row, customerName, club);
                                     if (metroMartProofList.Item1 == null)
                                     {
                                         return (null, metroMartProofList.Item2);
@@ -141,7 +143,7 @@ namespace CSI.Application.Services
 
                         if (customerName == "GrabMart" || customerName == "GrabFood")
                         {
-                            var grabProofList = ExtractCSVGrabMartOrFood(tempCsvFilePath, customerName);
+                            var grabProofList = ExtractCSVGrabMartOrFood(tempCsvFilePath, customerName, club);
                             if (grabProofList.Item1 == null)
                             {
                                 return (null, grabProofList.Item2);
@@ -159,7 +161,7 @@ namespace CSI.Application.Services
                         }
                         else if (customerName == "PickARoo")
                         {
-                            var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath);
+                            var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath, club);
                             if (pickARooProofList.Item1 == null)
                             {
                                 return (null, pickARooProofList.Item2);
@@ -177,7 +179,7 @@ namespace CSI.Application.Services
                         }
                         else if (customerName == "FoodPanda")
                         {
-                            var foodPandaProofList = ExtractCSVFoodPanda(tempCsvFilePath);
+                            var foodPandaProofList = ExtractCSVFoodPanda(tempCsvFilePath, club);
                             if (foodPandaProofList.Item1 == null)
                             {
                                 return (null, foodPandaProofList.Item2);
@@ -195,7 +197,7 @@ namespace CSI.Application.Services
                         }
                         else if (customerName == "MetroMart")
                         {
-                            var metroMartProofList = ExtractCSVMetroMart(tempCsvFilePath);
+                            var metroMartProofList = ExtractCSVMetroMart(tempCsvFilePath, club);
                             if (metroMartProofList.Item1 == null)
                             {
                                 return (null, metroMartProofList.Item2);
@@ -247,7 +249,7 @@ namespace CSI.Application.Services
             {
                 if (DateTime.TryParse(cellValue.ToString(), out var transactionDate))
                 {
-                    return transactionDate;
+                    return transactionDate.Date;
                 }
                 else
                 {
@@ -260,7 +262,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractGrabMartOrFood(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        private (List<Prooflist>, string?) ExtractGrabMartOrFood(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var getLocation = _dbContext.Locations.ToList();
             var grabFoodProofList = new List<Prooflist>();
@@ -322,7 +324,7 @@ namespace CSI.Application.Services
                                 PurchasedAmount = (decimal?)0.00,
                                 Amount = worksheet.Cells[row, columnIndexes["Net sales"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Net sales"]].Value?.ToString()) : null,
                                 StatusId = worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = GetLocationId(worksheet.Cells[row, columnIndexes["Store name"]].Value?.ToString(), getLocation),
+                                StoreId = club,
                                 DeleteFlag = false,
                             };
                             grabFoodProofList.Add(prooflist);
@@ -342,7 +344,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractPickARoo(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        private (List<Prooflist>, string?) ExtractPickARoo(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var pickARooProofList = new List<Prooflist>();
             DateTime currentDate = DateTime.Now;
@@ -402,7 +404,7 @@ namespace CSI.Application.Services
                                 PurchasedAmount = (decimal?)0.00,
                                 Amount = worksheet.Cells[row, columnIndexes["Amount"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Amount"]].Value?.ToString()) : null,
                                 StatusId = worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order Status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = 0,
+                                StoreId = club,
                                 DeleteFlag = false,
                             };
                             pickARooProofList.Add(prooflist);
@@ -422,7 +424,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractFoodPanda(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        private (List<Prooflist>, string?) ExtractFoodPanda(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var foodPandaProofList = new List<Prooflist>();
             DateTime currentDate = DateTime.Now;
@@ -482,7 +484,7 @@ namespace CSI.Application.Services
                                 PurchasedAmount = (decimal?)0.00,
                                 Amount = worksheet.Cells[row, columnIndexes["Subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["Subtotal"]].Value?.ToString()) : null,
                                 StatusId = worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["Order status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = 0,
+                                StoreId = club,
                                 DeleteFlag = false,
                             };
                             foodPandaProofList.Add(prooflist);
@@ -502,7 +504,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractMetroMart(ExcelWorksheet worksheet, int rowCount, int row, string customerName)
+        private (List<Prooflist>, string?) ExtractMetroMart(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club)
         {
             var metroMartProofList = new List<Prooflist>();
             DateTime currentDate = DateTime.Now;
@@ -564,7 +566,7 @@ namespace CSI.Application.Services
                                 PurchasedAmount = PurchasedAmount,
                                 Amount = NonMembershipFee + PurchasedAmount,
                                 StatusId = worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Delivered" ? 3 : worksheet.Cells[row, columnIndexes["JO delivery status"]].Value?.ToString() == "Cancelled" ? 4 : null,
-                                StoreId = 0,
+                                StoreId = club,
                                 DeleteFlag = false,
                             };
                             metroMartProofList.Add(prooflist);
@@ -584,7 +586,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractCSVGrabMartOrFood(string filePath, string customerName)
+        private (List<Prooflist>, string?) ExtractCSVGrabMartOrFood(string filePath, string customerName, int club)
         {
             int row = 2;
             int rowCount = 0;
@@ -605,18 +607,16 @@ namespace CSI.Application.Services
                     while (!parser.EndOfData)
                     {
                         string[] fields = parser.ReadFields();
-
-                        var transactionDate = DateTime.Parse(fields[6]);
                         var grabfood = new Prooflist
                         {
                             CustomerId = customerName == "GrabMart" ? "9999011955" : "9999011929",
-                            TransactionDate = transactionDate,
+                            TransactionDate = fields[5].ToString() != "" ? GetDateTime(fields[5]) : null,
                             OrderNo = fields[15],
                             NonMembershipFee = (decimal?)0.00,
                             PurchasedAmount = (decimal?)0.00,
-                            Amount = decimal.Parse(fields[39]),
-                            StatusId = fields[9] == "Completed" || fields[9] == "Completed" ? 3 : fields[9] == "Cancelled" ? 4 : null,
-                            StoreId = null,
+                            Amount = fields[39] != "" ? decimal.Parse(fields[39]) : (decimal?)0.00,
+                            StatusId = fields[9] == "Completed" || fields[9] == "Delivered" || fields[9] == "Transferred" ? 3 : fields[9] == "Cancelled" ? 4 : null,
+                            StoreId = club,
                             DeleteFlag = false,
                         };
 
@@ -629,12 +629,12 @@ namespace CSI.Application.Services
             }
             catch (Exception ex)
             {
-                return (null, $"Please check error in row {row}: {ex.Message}");
+                return (null, $"Please check error in row {rowCount}: {ex.Message}");
                 throw;
             }
         }
 
-        private (List<Prooflist>, string?) ExtractCSVMetroMart(string filePath)
+        private (List<Prooflist>, string?) ExtractCSVMetroMart(string filePath, int club)
         {
             int row = 2;
             int rowCount = 0;
@@ -657,17 +657,19 @@ namespace CSI.Application.Services
                         string[] fields = parser.ReadFields();
 
                         var transactionDate = DateTime.Parse(fields[3]);
-                        var amount = decimal.Parse(fields[5]) + decimal.Parse(fields[6]);
+                        var NonMembershipFee = fields[5] != "" ? decimal.Parse(fields[5]) : (decimal?)0.00;
+                        var PurchasedAmount = fields[6] != "" ? decimal.Parse(fields[6]) : (decimal?)0.00;
+                        var amount = NonMembershipFee + PurchasedAmount;
                         var metroMart = new Prooflist
                         {
                             CustomerId = "9999011855",
-                            TransactionDate = transactionDate,
+                            TransactionDate = fields[3].ToString() != "" ? GetDateTime(fields[3]) : null,
                             OrderNo = fields[1],
-                            NonMembershipFee = (decimal?)0.00,
-                            PurchasedAmount = (decimal?)0.00,
+                            NonMembershipFee = NonMembershipFee,
+                            PurchasedAmount = PurchasedAmount,
                             Amount = amount,
-                            StatusId = fields[2] == "Completed" || fields[2] == "Completed" ? 3 : fields[2] == "Cancelled" ? 4 : null,
-                            StoreId = null,
+                            StatusId = fields[2] == "Completed" || fields[2] == "Delivered" || fields[2] == "Transferred" ? 3 : fields[2] == "Cancelled" ? 4 : null,
+                            StoreId = club,
                             DeleteFlag = false,
                         };
 
@@ -685,7 +687,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractCSVPickARoo(string filePath)
+        private (List<Prooflist>, string?) ExtractCSVPickARoo(string filePath, int club)
         {
             int row = 2;
             int rowCount = 0;
@@ -717,7 +719,7 @@ namespace CSI.Application.Services
                             PurchasedAmount = (decimal?)0.00,
                             Amount = decimal.Parse(fields[3]),
                             StatusId = fields[2] == "Completed" || fields[2] == "Completed" ? 3 : fields[2] == "Cancelled" ? 4 : null,
-                            StoreId = null,
+                            StoreId = club,
                             DeleteFlag = false,
                         };
 
@@ -735,7 +737,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractCSVFoodPanda(string filePath)
+        private (List<Prooflist>, string?) ExtractCSVFoodPanda(string filePath, int club)
         {
             int row = 2;
             int rowCount = 0;
@@ -767,7 +769,7 @@ namespace CSI.Application.Services
                             PurchasedAmount = (decimal?)0.00,
                             Amount = decimal.Parse(fields[18]),
                             StatusId = fields[6] == "Completed" || fields[6] == "Completed" ? 3 : fields[6] == "Cancelled" ? 4 : null,
-                            StoreId = null,
+                            StoreId = club,
                             DeleteFlag = false,
                         };
 
@@ -805,14 +807,14 @@ namespace CSI.Application.Services
 
         public async Task<List<PortalDto>> GetPortal(PortalParamsDto portalParamsDto)
         {
+            var date = GetDateTime(portalParamsDto.dates[0].Date);
             var result = await _dbContext.Prooflist
-                .Where(x => x.TransactionDate.HasValue
-                            && x.TransactionDate.Value.Date == portalParamsDto.dates[0].Date
-                            && x.StoreId == portalParamsDto.storeId[0]
-                            && x.CustomerId == portalParamsDto.memCode[0]
-                            && x.StatusId != 4)
                 .Join(_dbContext.Locations, a => a.StoreId, b => b.LocationCode, (a, b) => new { a, b })
                 .Join(_dbContext.Status, c => c.a.StatusId, d => d.Id, (c, d) => new { c, d })
+                .Where(x => x.c.a.TransactionDate.Value.Date == date
+                    && x.c.a.StoreId == portalParamsDto.storeId[0]
+                    && x.c.a.CustomerId == portalParamsDto.memCode[0]
+                    && x.c.a.StatusId != 4)
                 .Select(n => new PortalDto
                 {
                     Id = n.c.a.Id,
