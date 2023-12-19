@@ -386,7 +386,6 @@ namespace CSI.Application.Services
                         {
                             chktransactionDate = transactionDate.Value.Date;
                         }
-
                         var cnvrtDate = GetDateTime(selectedDate);
                         if (cnvrtDate == chktransactionDate)
                         {
