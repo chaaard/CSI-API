@@ -20,7 +20,7 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IProofListService, ProofListService>();
 builder.Services.AddScoped<IAdjustmentService, AdjustmentService>();
 builder.Services.AddHostedService<AnalyticsSchedulerService>();
-
+builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 // Db Connection.
 builder.Services.AddDbContext<AppDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DatabaseConnection")

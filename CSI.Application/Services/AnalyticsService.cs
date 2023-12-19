@@ -197,51 +197,64 @@ namespace CSI.Application.Services
             try
             {
                 var result = await _dbContext.Match
-                    .FromSqlRaw(
-                        $"SELECT " +
-                        $"    a.[Id] AS [AnalyticsId], " +
-                        $"    a.CustomerName AS [AnalyticsPartner], " +
-                        $"    a.LocationName AS [AnalyticsLocation], " +
-                        $"    a.[TransactionDate] AS [AnalyticsTransactionDate], " +
-                        $"    a.[OrderNo] AS [AnalyticsOrderNo], " +
-                        $"    a.[SubTotal] AS [AnalyticsAmount], " +
-                        $"    p.[Id] AS [ProofListId], " +
-                        $"    p.[TransactionDate] AS [ProofListTransactionDate], " +
-                        $"    p.[OrderNo] AS [ProofListOrderNo], " +
-                        $"    p.[Amount] AS [ProofListAmount] " +
-                        $"FROM " +
-                        $"    ( " +
-                        $"        SELECT " +
-                        $"            a.[Id], " +
-                        $"            c.CustomerName, " +
-                        $"            l.LocationName, " +
-                        $"            a.[TransactionDate], " +
-                        $"            a.[OrderNo], " +
-                        $"            a.[SubTotal] " +
-                        $"        FROM " +
-                        $"            [dbo].[tbl_analytics] a " +
-                        $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = a.LocationId " +
-                        $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = a.CustomerId " +
-                        $"        WHERE " +
-                        $"            (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}') " +
-                        $"    ) a " +
-                        $"FULL OUTER JOIN " +
-                        $"    ( " +
-                        $"        SELECT " +
-                        $"            p.[Id], " +
-                        $"            c.CustomerName, " +
-                        $"            l.LocationName, " +
-                        $"            p.[TransactionDate], " +
-                        $"            p.[OrderNo], " +
-                        $"            p.[Amount] " +
-                        $"        FROM " +
-                        $"            [dbo].[tbl_prooflist] p " +
-                        $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
-                        $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId " +
-                        $"        WHERE " +
-                        $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL AND p.StatusId != 4) " +
-                        $"    ) p " +
-                        $"ON a.[OrderNo] = p.[OrderNo];")
+                    .FromSqlRaw($"WITH RankedData AS (" +
+                                $"    SELECT " +
+                                $"        a.[Id], " +
+                                $"        c.CustomerName, " +
+                                $"        l.LocationName, " +
+                                $"        a.[TransactionDate], " +
+                                $"        a.[OrderNo], " +
+                                $"        a.[SubTotal], " +
+                                $"        ROW_NUMBER() OVER (PARTITION BY a.[OrderNo] ORDER BY a.[TransactionNo] DESC) AS RowNum " +
+                                $"    FROM " +
+                                $"        [dbo].[tbl_analytics] a " +
+                                $"        LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = a.LocationId " +
+                                $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = a.CustomerId " +
+                                $"    WHERE " +
+                                $"        (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}')" +
+                                $"), " +
+                                $"FilteredData AS (" +
+                                $"    SELECT " +
+                                $"        Id, " +
+                                $"        CustomerName, " +
+                                $"        LocationName, " +
+                                $"        [TransactionDate], " +
+                                $"        [OrderNo], " +
+                                $"        [SubTotal], " +
+                                $"        RowNum " +
+                                $"    FROM RankedData " +
+                                $"    WHERE RowNum = 1 AND [SubTotal] >= 1" +
+                                $") " +
+                                $"SELECT " +
+                                $"    a.[Id] AS [AnalyticsId], " +
+                                $"    a.CustomerName AS [AnalyticsPartner], " +
+                                $"    a.LocationName AS [AnalyticsLocation], " +
+                                $"    a.[TransactionDate] AS [AnalyticsTransactionDate], " +
+                                $"    a.[OrderNo] AS [AnalyticsOrderNo], " +
+                                $"    a.[SubTotal] AS [AnalyticsAmount], " +
+                                $"    p.[Id] AS [ProofListId], " +
+                                $"    p.[TransactionDate] AS [ProofListTransactionDate], " +
+                                $"    p.[OrderNo] AS [ProofListOrderNo], " +
+                                $"    p.[Amount] AS [ProofListAmount] " +
+                                $"FROM " +
+                                $"    FilteredData a " +
+                                $"FULL OUTER JOIN " +
+                                $"    ( " +
+                                $"        SELECT " +
+                                $"            p.[Id], " +
+                                $"            c.CustomerName, " +
+                                $"            l.LocationName, " +
+                                $"            p.[TransactionDate], " +
+                                $"            p.[OrderNo], " +
+                                $"            p.[Amount] " +
+                                $"        FROM " +
+                                $"            [dbo].[tbl_prooflist] p " +
+                                $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
+                                $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId " +
+                                $"        WHERE " +
+                                $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL AND p.StatusId != 4) " +
+                                $"    ) p " +
+                                $"ON a.[OrderNo] = p.[OrderNo];")
                     .ToListAsync();
 
                 var matchDtos = result.Select(m => new MatchDto
