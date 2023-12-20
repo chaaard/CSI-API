@@ -268,7 +268,7 @@ namespace CSI.Application.Services
             var grabFoodProofList = new List<Prooflist>();
 
             // Define expected headers
-            string[] expectedHeaders = { "store name", "created on", "type", "status", "short order id", "net sales" };
+            string[] expectedHeaders = { "store name", "updated on", "type", "status", "short order id", "net sales" };
 
             Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
 
@@ -293,16 +293,23 @@ namespace CSI.Application.Services
                     }
                 }
 
+                var merchantName = worksheet.Cells[2, columnIndexes["type"]].Value?.ToString();
+
+                if (merchantName != customerName)
+                {
+                    return (grabFoodProofList, "Uploaded file merchant do not match.");
+                }
+
                 for (row = 2; row <= rowCount; row++)
                 {
                     if (worksheet.Cells[row, columnIndexes["net sales"]].Value != null ||
                         worksheet.Cells[row, columnIndexes["short order id"]].Value != null ||
                         worksheet.Cells[row, columnIndexes["status"]].Value != null ||
-                        worksheet.Cells[row, columnIndexes["created on"]].Value != null ||
+                        worksheet.Cells[row, columnIndexes["updated on"]].Value != null ||
                         worksheet.Cells[row, columnIndexes["store name"]].Value != null)
                     {
                        
-                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["created on"]].Value);
+                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["updated on"]].Value);
 
                         var chktransactionDate = new DateTime();
                         if (transactionDate.HasValue)
@@ -355,7 +362,7 @@ namespace CSI.Application.Services
                 // Find column indexes based on header names
                 for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                 {
-                    var header = worksheet.Cells[1, col].Text.Trim();
+                    var header = worksheet.Cells[1, col].Text.ToLower().Trim();
                     if (!string.IsNullOrEmpty(header))
                     {
                         columnIndexes[header] = col;
@@ -432,7 +439,7 @@ namespace CSI.Application.Services
                 // Find column indexes based on header names
                 for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                 {
-                    var header = worksheet.Cells[1, col].Text.Trim();
+                    var header = worksheet.Cells[2, col].Text.ToLower().Trim();
                     if (!string.IsNullOrEmpty(header))
                     {
                         columnIndexes[header] = col;
@@ -448,7 +455,7 @@ namespace CSI.Application.Services
                     }
                 }
 
-                for (row = 2; row <= rowCount; row++)
+                for (row = 3; row <= rowCount; row++)
                 {
                     if (worksheet.Cells[row, columnIndexes["order id"]].Value != null ||
                         worksheet.Cells[row, columnIndexes["order status"]].Value != null ||
@@ -509,7 +516,7 @@ namespace CSI.Application.Services
                 // Find column indexes based on header names
                 for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                 {
-                    var header = worksheet.Cells[1, col].Text.Trim();
+                    var header = worksheet.Cells[1, col].Text.ToLower().Trim();
                     if (!string.IsNullOrEmpty(header))
                     {
                         columnIndexes[header] = col;

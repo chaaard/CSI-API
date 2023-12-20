@@ -252,7 +252,7 @@ namespace CSI.Application.Services
                                 $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
                                 $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId " +
                                 $"        WHERE " +
-                                $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL AND p.StatusId != 4) " +
+                                $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4) " +
                                 $"    ) p " +
                                 $"ON a.[OrderNo] = p.[OrderNo];")
                     .ToListAsync();
@@ -269,7 +269,7 @@ namespace CSI.Application.Services
                     ProofListTransactionDate = m.ProofListTransactionDate,
                     ProofListOrderNo = m.ProofListOrderNo,
                     ProofListAmount = m.ProofListAmount,
-                    Variance = (m.AnalyticsAmount == null || m.ProofListAmount == null) ? 0 : m.AnalyticsAmount - m.ProofListAmount.Value,
+                    Variance = (m.AnalyticsAmount == null) ? m.ProofListAmount : (m.ProofListAmount == null) ? m.AnalyticsAmount :  m.AnalyticsAmount - m.ProofListAmount.Value,
                 }).ToList();
 
                 return matchDtos;
