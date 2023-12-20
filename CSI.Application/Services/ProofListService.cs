@@ -428,9 +428,10 @@ namespace CSI.Application.Services
         private (List<Prooflist>, string?) ExtractFoodPanda(ExcelWorksheet worksheet, int rowCount, int row, string customerName, int club, string selectedDate)
         {
             var foodPandaProofList = new List<Prooflist>();
+            var transactionDate = new DateTime?();
 
             // Define expected headers
-            string[] expectedHeaders = { "order id", "order status", "delivered at", "subtotal" };
+            string[] expectedHeaders = { "order id", "order status", "delivered at", "subtotal", "cancelled at", "is payable" };
 
             Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
 
@@ -463,7 +464,14 @@ namespace CSI.Application.Services
                         worksheet.Cells[row, columnIndexes["subtotal"]].Value != null)
                     {
 
-                        var transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["delivered at"]].Value);
+                        if (worksheet.Cells[row, columnIndexes["order status"]].Value.ToString() == "Cancelled" && worksheet.Cells[row, columnIndexes["is payable"]].Value.ToString() == "yes")
+                        {
+                            transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["cancelled at"]].Value);
+                        }
+                        else
+                        {
+                            transactionDate = GetDateTime(worksheet.Cells[row, columnIndexes["delivered at"]].Value);
+                        }
 
                         var chktransactionDate = new DateTime();
                         if (transactionDate.HasValue)
@@ -792,7 +800,19 @@ namespace CSI.Application.Services
                     {
                         string[] fields = parser.ReadFields();
                         var chktransactionDate = new DateTime();
-                        var transactionDate = GetDateTime(fields[14]);
+                        var transactionDate = new DateTime?();
+                        var status = fields[6];
+                        var isPayable = fields[23];
+
+                        if (status == "Cancelled" && isPayable == "Yes")
+                        {
+                            transactionDate = GetDateTime(fields[15]);
+                        }
+                        else
+                        {
+                            transactionDate = GetDateTime(fields[14]);
+                        }
+
                         if (transactionDate.HasValue)
                         {
                             chktransactionDate = transactionDate.Value.Date;
