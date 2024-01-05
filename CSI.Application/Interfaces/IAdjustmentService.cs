@@ -12,9 +12,10 @@ namespace CSI.Application.Interfaces
     {
         Task<(List<AdjustmentDto>, int totalPages)> GetAdjustmentsAsync(AdjustmentParams adjustmentParams);
         Task<AnalyticsProoflist> CreateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto);
-        Task<List<Reasons>> GetReasonsAsync();
+        Task<bool> UpdateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto);
         Task<bool> UpdateJO(AnalyticsProoflistDto adjustmentTypeDto);
         Task<bool> UpdatePartner(AnalyticsProoflistDto adjustmentTypeDto);
+        Task<List<Reasons>> GetReasonsAsync();
         Task<TransactionDtos> GetTotalCountAmount(TransactionCountAmountDto transactionCountAmountDto);
     }
 }

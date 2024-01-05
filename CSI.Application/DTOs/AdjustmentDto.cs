@@ -15,5 +15,9 @@ namespace CSI.Application.DTOs
         public decimal? Amount { get; set; }
         public string? AdjustmentType { get; set; } = string.Empty;
         public string? Status { get; set; } = string.Empty;
+        public int AdjustmentId { get; set; }
+        public string? LocationName { get; set; } = string.Empty;
+        public int? AnalyticsId { get; set; }
+        public int? ProofListId { get; set; }
     }
 }

@@ -47,10 +47,10 @@ namespace CSI.API.Controllers
             return (NotFound());
         }
 
-        [HttpGet("GetReasonsAsync")]
-        public async Task<IActionResult> GetReasonsAsync()
+        [HttpPut("UpdateAnalyticsProofList")]
+        public async Task<IActionResult> UpdateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto)
         {
-            var result = await _adjustmentService.GetReasonsAsync();
+            var result = await _adjustmentService.UpdateAnalyticsProofList(adjustmentTypeDto);
 
             if (result != null)
             {
@@ -75,6 +75,18 @@ namespace CSI.API.Controllers
         public async Task<IActionResult> UpdatePartner(AnalyticsProoflistDto adjustmentTypeDto)
         {
             var result = await _adjustmentService.UpdatePartner(adjustmentTypeDto);
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
+
+        [HttpGet("GetReasonsAsync")]
+        public async Task<IActionResult> GetReasonsAsync()
+        {
+            var result = await _adjustmentService.GetReasonsAsync();
 
             if (result != null)
             {
