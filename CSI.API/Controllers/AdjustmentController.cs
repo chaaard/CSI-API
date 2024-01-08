@@ -106,5 +106,17 @@ namespace CSI.API.Controllers
             }
             return (NotFound());
         }
+
+        [HttpPost("ExportExceptions")]
+        public async Task<IActionResult> ExportExceptions(AdjustmentParams adjustmentTypeDto)
+        {
+            var result = await _adjustmentService.ExportExceptions(adjustmentTypeDto);
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
     }
 }

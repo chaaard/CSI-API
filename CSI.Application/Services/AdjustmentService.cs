@@ -5,6 +5,7 @@ using CSI.Domain.Entities;
 using CSI.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -306,6 +307,51 @@ namespace CSI.Application.Services
                  .FirstOrDefaultAsync();
 
             return result ?? new TransactionDtos();
+        }
+
+        public async Task<List<AdjustmentDto>> ExportExceptions(AdjustmentParams adjustmentParams)
+        {
+            var result = new List<AdjustmentDto>();
+            DateTime date;
+            IQueryable<AdjustmentDto> query = Enumerable.Empty<AdjustmentDto>().AsQueryable();
+            if (DateTime.TryParse(adjustmentParams.dates[0], out date))
+            {
+                query = _dbContext.AnalyticsProoflist
+                    .GroupJoin(_dbContext.Analytics, ap => ap.AnalyticsId, a => a.Id, (ap, a) => new { ap, a })
+                    .SelectMany(x => x.a.DefaultIfEmpty(), (x, a) => new { x.ap, a })
+                    .GroupJoin(_dbContext.Prooflist, x => x.ap.ProoflistId, p => p.Id, (x, p) => new { x.ap, x.a, Prooflist = p })
+                    .SelectMany(x => x.Prooflist.DefaultIfEmpty(), (x, p) => new { x.ap, x.a, Prooflist = p })
+                    .GroupJoin(_dbContext.CustomerCodes, x => x.a.CustomerId, c => c.CustomerCode, (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
+                    .SelectMany(x => x.Customer.DefaultIfEmpty(), (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
+                    .GroupJoin(_dbContext.Adjustments, x => x.ap.AdjustmentId, ad => ad.Id, (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
+                    .SelectMany(x => x.Adjustment.DefaultIfEmpty(), (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
+                    .GroupJoin(_dbContext.Actions, x => x.ap.ActionId, ac => ac.Id, (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
+                    .SelectMany(x => x.Action.DefaultIfEmpty(), (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
+                    .GroupJoin(_dbContext.Status, x => x.ap.StatusId, s => s.Id, (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                    .SelectMany(x => x.Status.DefaultIfEmpty(), (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                    .Join(_dbContext.Locations, x => x.a.LocationId, l => l.LocationCode, (x, l) => new { x, l })
+                    .Where(x => x.x.a.TransactionDate == date && x.x.a.LocationId == adjustmentParams.storeId[0] && x.x.a.CustomerId == adjustmentParams.memCode[0])
+                    .Select(x => new AdjustmentDto
+                    {
+                        Id = x.x.ap.Id,
+                        CustomerId = x.x.Customer.CustomerName,
+                        JoNumber = x.x.a.OrderNo,
+                        TransactionDate = x.x.a.TransactionDate,
+                        Amount = x.x.a.SubTotal,
+                        AdjustmentType = x.x.Action.Action,
+                        Status = x.x.Status.StatusName,
+                        AdjustmentId = x.x.ap.AdjustmentId,
+                        LocationName = x.l.LocationName,
+                    })
+                    .OrderBy(x => x.Id);
+
+                 result  = await query
+                   .Skip((adjustmentParams.PageNumber - 1) * adjustmentParams.PageSize)
+                   .Take(adjustmentParams.PageSize)
+                   .OrderBy(x => x.Id)
+                   .ToListAsync();
+            }
+            return result;
         }
     }
 }

@@ -17,5 +17,6 @@ namespace CSI.Application.Interfaces
         Task<bool> UpdatePartner(AnalyticsProoflistDto adjustmentTypeDto);
         Task<List<Reasons>> GetReasonsAsync();
         Task<TransactionDtos> GetTotalCountAmount(TransactionCountAmountDto transactionCountAmountDto);
+        Task<bool> ExportExceptions(AdjustmentParams adjustmentParams);
     }
 }
