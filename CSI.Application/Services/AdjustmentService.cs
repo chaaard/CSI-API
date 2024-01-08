@@ -27,7 +27,6 @@ namespace CSI.Application.Services
         public async Task<(List<AdjustmentDto>, int totalPages)> GetAdjustmentsAsync(AdjustmentParams adjustmentParams)
         {
             DateTime date;
-
             IQueryable<AdjustmentDto> query = Enumerable.Empty<AdjustmentDto>().AsQueryable();
             if (DateTime.TryParse(adjustmentParams.dates[0], out date))
             {
@@ -58,7 +57,17 @@ namespace CSI.Application.Services
                         AdjustmentId = x.x.ap.AdjustmentId,
                         LocationName = x.l.LocationName,
                         AnalyticsId = x.x.ap.AnalyticsId,
-                        ProofListId = x.x.ap.ProoflistId
+                        ProofListId = x.x.ap.ProoflistId,
+                        OldJo = x.x.Adjustment.OldJO,
+                        OldCustomerId = x.x.Adjustment.CustomerIdOld,
+                        DisputeReferenceNumber = x.x.Adjustment.DisputeReferenceNumber,
+                        DisputeAmount = x.x.Adjustment.DisputeAmount,
+                        DateDisputeFiled = x.x.Adjustment.DateDisputeFiled,
+                        DescriptionOfDispute = x.x.Adjustment.DescriptionOfDispute,
+                        AccountsPaymentDate = x.x.Adjustment.AccountsPaymentDate,
+                        AccountsPaymentTransNo = x.x.Adjustment.AccountsPaymentTransNo,
+                        AccountsPaymentAmount = x.x.Adjustment.AccountsPaymentAmount,
+                        ReasonId = x.x.Adjustment.ReasonId
                     })
                     .OrderBy(x => x.Id);
             }
@@ -156,6 +165,7 @@ namespace CSI.Application.Services
         public async Task<bool> UpdateJO(AnalyticsProoflistDto adjustmentTypeDto)
         {
             var result = false;
+            var oldJO = "";
             try
             {
                 if (adjustmentTypeDto != null)
@@ -164,8 +174,10 @@ namespace CSI.Application.Services
                        .Where(x => x.Id == adjustmentTypeDto.AnalyticsId)
                        .FirstOrDefaultAsync();
 
+                  
                     if (matchRow != null)
                     {
+                        oldJO = matchRow.OrderNo;
                         matchRow.OrderNo = adjustmentTypeDto?.AdjustmentAddDto?.NewJO;
                         await _dbContext.SaveChangesAsync();
                         result = true;
@@ -188,6 +200,7 @@ namespace CSI.Application.Services
 
                     if (adjustments != null)
                     {
+                        adjustments.OldJO = oldJO;
                         adjustments.NewJO = adjustmentTypeDto?.AdjustmentAddDto?.NewJO;
                         await _dbContext.SaveChangesAsync();
                         result = true;
@@ -204,6 +217,7 @@ namespace CSI.Application.Services
         public async Task<bool> UpdatePartner(AnalyticsProoflistDto adjustmentTypeDto)
         {
             var result = false;
+            var oldCustomerId = "";
             try
             {
                 if (adjustmentTypeDto != null)
@@ -214,6 +228,7 @@ namespace CSI.Application.Services
 
                     if (matchRow != null)
                     {
+                        oldCustomerId = matchRow.CustomerId;
                         matchRow.CustomerId = adjustmentTypeDto?.AdjustmentAddDto?.CustomerId;
                         await _dbContext.SaveChangesAsync();
                         result = true;
@@ -236,6 +251,7 @@ namespace CSI.Application.Services
 
                     if (adjustments != null)
                     {
+                        adjustments.CustomerIdOld = oldCustomerId;
                         adjustments.CustomerId = adjustmentTypeDto?.AdjustmentAddDto?.CustomerId;
                         await _dbContext.SaveChangesAsync();
                         result = true;

@@ -19,11 +19,11 @@ namespace CSI.API.Controllers
         }
 
         [HttpPost("GetAnalytics")]
-        public async Task<IActionResult> GetAnalytics(AnalyticsParamsDto salesAnalyticsParamsDto)
+        public async Task<IActionResult> GetAnalytics(AnalyticsParamsDto analyticsParamsDto)
         {
             try
             {
-                var result = await _analyticsService.GetAnalytics(salesAnalyticsParamsDto);
+                var result = await _analyticsService.GetAnalytics(analyticsParamsDto);
 
                 if (result != null)
                 {
@@ -45,11 +45,11 @@ namespace CSI.API.Controllers
         }
 
         [HttpPost("GetAnalyticsProofListVariance")]
-        public async Task<IActionResult> GetAnalyticsProofListVariance(AnalyticsParamsDto salesAnalyticsParamsDto)
+        public async Task<IActionResult> GetAnalyticsProofListVariance(AnalyticsParamsDto analyticsParamsDto)
         {
             try
             {
-                var result = await _analyticsService.GetAnalyticsProofListVariance(salesAnalyticsParamsDto);
+                var result = await _analyticsService.GetAnalyticsProofListVariance(analyticsParamsDto);
 
                 if (result != null)
                 {
@@ -71,11 +71,11 @@ namespace CSI.API.Controllers
         }
 
         [HttpPost("GetTotalAmountPerMechant")]
-        public async Task<IActionResult> GetTotalAmountPerMechant(AnalyticsParamsDto salesAnalyticsParamsDto)
+        public async Task<IActionResult> GetTotalAmountPerMechant(AnalyticsParamsDto analyticsParamsDto)
         {
             try
             {
-                var result = await _analyticsService.GetTotalAmountPerMechant(salesAnalyticsParamsDto);
+                var result = await _analyticsService.GetTotalAmountPerMechant(analyticsParamsDto);
 
                 if (result != null)
                 {
@@ -100,6 +100,36 @@ namespace CSI.API.Controllers
         public async Task RefreshAnalytics(RefreshAnalyticsDto refreshAnalyticsDto)
         {
             await _analyticsService.RefreshAnalytics(refreshAnalyticsDto);
+        }
+
+        [HttpPost("SubmitAnalytics")]
+        public async Task<IActionResult> SubmitAnalytics(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var result = await _analyticsService.SubmitAnalytics(analyticsParamsDto);
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
+
+        [HttpPost("GenerateInvoiceAnalytics")]
+        public async Task<IActionResult> GenerateInvoiceAnalytics(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var result = await _analyticsService.GenerateInvoiceAnalytics(analyticsParamsDto);
+
+            if (result.Item1 != null)
+            {
+                var data = new
+                {
+                    InvoiceList = result.Item1,
+                    IsPending = result.Item2
+                };
+
+                return (Ok(data));
+            }
+            return (NotFound());
         }
     }
 }

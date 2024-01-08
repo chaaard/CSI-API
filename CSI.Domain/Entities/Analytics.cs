@@ -20,6 +20,7 @@ namespace CSI.Domain.Entities
         public int? Qty { get; set; }
         public decimal? Amount { get; set; }
         public decimal SubTotal { get; set; }
+        public int StatusId { get; set; }
         public Guid? UserId { get; set; }
         public bool? DeleteFlag { get; set; }
     }

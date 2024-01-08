@@ -14,5 +14,7 @@ namespace CSI.Application.Interfaces
         Task<List<MatchDto>> GetAnalyticsProofListVariance(AnalyticsParamsDto analyticsParamsDto);
         Task<decimal?> GetTotalAmountPerMechant(AnalyticsParamsDto analyticsParamsDto);
         Task RefreshAnalytics(RefreshAnalyticsDto analyticsParam);
+        Task<bool> SubmitAnalytics(AnalyticsParamsDto analyticsParamsDto);
+        Task<(List<InvoiceDto>, bool)> GenerateInvoiceAnalytics(AnalyticsParamsDto analyticsParamsDto);
     }
 }
