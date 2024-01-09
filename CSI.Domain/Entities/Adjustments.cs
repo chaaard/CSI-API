@@ -14,7 +14,9 @@ namespace CSI.Domain.Entities
         public DateTime? DateDisputeFiled { get; set; }
         public string? DescriptionOfDispute { get; set; } = string.Empty;
         public string? NewJO { get; set; } = string.Empty;
+        public string? OldJO { get; set; } = string.Empty;
         public string? CustomerId { get; set; } = string.Empty;
+        public string? CustomerIdOld { get; set; } = string.Empty;
         public DateTime? AccountsPaymentDate { get; set; }
         public string? AccountsPaymentTransNo { get; set; } = string.Empty;
         public decimal? AccountsPaymentAmount { get; set; }

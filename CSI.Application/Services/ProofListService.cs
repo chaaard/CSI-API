@@ -29,203 +29,249 @@ namespace CSI.Application.Services
 
         }
 
-        public (List<Prooflist>?, string?) ReadProofList(IFormFile file, string customerName, string strClub, string selectedDate)
+        public (List<Prooflist>?, string?) ReadProofList(List<IFormFile> files, string customerName, string strClub, string selectedDate)
         {
             int row = 2;
             int rowCount = 0;
             var club = Convert.ToInt32(strClub);
+            var proofList = new List<Prooflist>();
+
+            Dictionary<string, string> customers = new Dictionary<string, string>();
+            customers.Add("GrabFood", "9999011929");
+            customers.Add("GrabMart", "9999011955");
+            customers.Add("PickARoo", "9999011931");
+            customers.Add("FoodPanda", "9999011838");
+            customers.Add("MetroMart", "9999011855'',''90999011855'',''900999011855");
+
             try
             {
-                var patientList = new List<Prooflist>();
-                using (var stream = file.OpenReadStream())
+                foreach (var file in files)
                 {
-                    if (file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                    using (var stream = file.OpenReadStream())
                     {
-                        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-                        using (var package = new ExcelPackage(stream))
+                        if (file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
                         {
-                            if (package.Workbook.Worksheets.Count > 0)
+                            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                            using (var package = new ExcelPackage(stream))
                             {
-                                var worksheet = package.Workbook.Worksheets[0]; // Assuming data is in the first worksheet
+                                if (package.Workbook.Worksheets.Count > 0)
+                                {
+                                    var worksheet = package.Workbook.Worksheets[0]; // Assuming data is in the first worksheet
+                                     
+                                    rowCount = worksheet.Dimension.Rows;
 
-                                rowCount = worksheet.Dimension.Rows;
-
-                                // Check if the filename contains the word "grabfood"
-                                if (customerName == "GrabMart" || customerName == "GrabFood")
-                                {
-                                    var grabProofList = ExtractGrabMartOrFood(worksheet, rowCount, row, customerName, club, selectedDate);
-                                    if (grabProofList.Item1 == null)
+                                    // Check if the filename contains the word "grabfood"
+                                    if (customerName == "GrabMart" || customerName == "GrabFood")
                                     {
-                                        return (null, grabProofList.Item2);
+                                        var grabProofList = ExtractGrabMartOrFood(worksheet, rowCount, row, customerName, club, selectedDate);
+                                        if (grabProofList.Item1 == null)
+                                        {
+                                            return (null, grabProofList.Item2);
+                                        }
+                                        else if (grabProofList.Item1.Count <= 0)
+                                        {
+                                            return (null, grabProofList.Item2);
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in grabProofList.Item1)
+                                            {
+                                                proofList.Add(item);
+                                            }
+                                        }
                                     }
-                                    else if (!DataExistsInDatabase(grabProofList.Item1))
+                                    else if (customerName == "PickARoo")
                                     {
-                                        _dbContext.Prooflist.AddRange(grabProofList.Item1);
-                                        _dbContext.SaveChanges();
-                                        return (grabProofList);
+                                        var pickARooProofList = ExtractPickARoo(worksheet, rowCount, row, customerName, club, selectedDate);
+                                        if (pickARooProofList.Item1 == null)
+                                        {
+                                            return (null, pickARooProofList.Item2);
+                                        }
+                                        else if (pickARooProofList.Item1.Count <= 0)
+                                        {
+                                            return (null, pickARooProofList.Item2);
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in pickARooProofList.Item1)
+                                            {
+                                                proofList.Add(item);
+                                            }
+                                        }
                                     }
-                                    else
+                                    else if (customerName == "FoodPanda")
                                     {
-                                        return (null, "Proof list already uploaded!");
+                                        var foodPandaProofList = ExtractFoodPanda(worksheet, rowCount, row, customerName, club, selectedDate);
+                                        if (foodPandaProofList.Item1 == null)
+                                        {
+                                            return (null, foodPandaProofList.Item2);
+                                        }
+                                        else if (foodPandaProofList.Item1.Count <= 0)
+                                        {
+                                            return (null, foodPandaProofList.Item2);
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in foodPandaProofList.Item1)
+                                            {
+                                                proofList.Add(item);
+                                            }
+                                        }
+                                    }
+                                    else if (customerName == "MetroMart")
+                                    {
+                                        var metroMartProofList = ExtractMetroMart(worksheet, rowCount, row, customerName, club, selectedDate);
+                                        if (metroMartProofList.Item1 == null)
+                                        {
+                                            return (null, metroMartProofList.Item2);
+                                        }
+                                        else if (metroMartProofList.Item1.Count <= 0)
+                                        {
+                                            return (null, metroMartProofList.Item2);
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in metroMartProofList.Item1)
+                                            {
+                                                proofList.Add(item);
+                                            }
+                                        }
                                     }
                                 }
-                                else if (customerName == "PickARoo")
+                                else
                                 {
-                                    var pickARooProofList = ExtractPickARoo(worksheet, rowCount, row, customerName, club, selectedDate);
-                                    if (pickARooProofList.Item1 == null)
-                                    {
-                                        return (null, pickARooProofList.Item2);
-                                    }
-                                    else if (!DataExistsInDatabase(pickARooProofList.Item1))
-                                    {
-                                        _dbContext.Prooflist.AddRange(pickARooProofList.Item1);
-                                        _dbContext.SaveChanges();
-                                        return (pickARooProofList);
-                                    }
-                                    else
-                                    {
-                                        return (null, "Proof list already uploaded!");
-                                    }
+                                    return (null, "No worksheets found in the workbook.");
                                 }
-                                else if (customerName == "FoodPanda")
-                                {
-                                    var foodPandaProofList = ExtractFoodPanda(worksheet, rowCount, row, customerName, club, selectedDate);
-                                    if (foodPandaProofList.Item1 == null)
-                                    {
-                                        return (null, foodPandaProofList.Item2);
-                                    }
-                                    else if (!DataExistsInDatabase(foodPandaProofList.Item1))
-                                    {
-                                        _dbContext.Prooflist.AddRange(foodPandaProofList.Item1);
-                                        _dbContext.SaveChanges();
-                                        return (foodPandaProofList);
-                                    }
-                                    else
-                                    {
-                                        return (null, "Proof list already uploaded!");
-                                    }
-                                }
-                                else if (customerName == "MetroMart")
-                                {
-                                    var metroMartProofList = ExtractMetroMart(worksheet, rowCount, row, customerName, club, selectedDate);
-                                    if (metroMartProofList.Item1 == null)
-                                    {
-                                        return (null, metroMartProofList.Item2);
-                                    }
-                                    else if (!DataExistsInDatabase(metroMartProofList.Item1))
-                                    {
-                                        _dbContext.Prooflist.AddRange(metroMartProofList.Item1);
-                                        _dbContext.SaveChanges();
-                                        return (metroMartProofList);
-                                    }
-                                    else
-                                    {
-                                        return (null, "Proof list already uploaded!");
-                                    }
-                                }
-
-                                return (null, "No worksheets found in the workbook.");
                             }
-                            else
+                        }
+                        else if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var tempCsvFilePath = Path.GetTempFileName() + ".csv";
+
+                            using (var fileStream = new FileStream(tempCsvFilePath, FileMode.Create))
                             {
-                                return (null, "No worksheets found in the workbook.");
+                                file.CopyTo(fileStream);
                             }
+
+                            if (customerName == "GrabMart" || customerName == "GrabFood")
+                            {
+                                var grabProofList = ExtractCSVGrabMartOrFood(tempCsvFilePath, customerName, club, selectedDate);
+                                if (grabProofList.Item1 == null)
+                                {
+                                    return (null, grabProofList.Item2);
+                                }
+                                else if (grabProofList.Item1.Count <= 0)
+                                {
+                                    return (null, grabProofList.Item2);
+                                }
+                                else
+                                {
+                                    foreach (var item in grabProofList.Item1)
+                                    {
+                                        proofList.Add(item);
+                                    }
+                                }
+                            }
+                            else if (customerName == "PickARoo")
+                            {
+                                var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath, club, selectedDate);
+                                if (pickARooProofList.Item1 == null)
+                                {
+                                    return (null, pickARooProofList.Item2);
+                                }
+                                else if (pickARooProofList.Item1.Count <= 0)
+                                {
+                                    return (null, pickARooProofList.Item2);
+                                }
+                                else
+                                {
+                                    foreach (var item in pickARooProofList.Item1)
+                                    {
+                                        proofList.Add(item);
+                                    }
+                                }
+                            }
+                            else if (customerName == "FoodPanda")
+                            {
+                                var foodPandaProofList = ExtractCSVFoodPanda(tempCsvFilePath, club, selectedDate);
+                                if (foodPandaProofList.Item1 == null)
+                                {
+                                    return (null, foodPandaProofList.Item2);
+                                }
+                                else if (foodPandaProofList.Item1.Count <= 0)
+                                {
+                                    return (null, foodPandaProofList.Item2);
+                                }
+                                else
+                                {
+                                    foreach (var item in foodPandaProofList.Item1)
+                                    {
+                                        proofList.Add(item);
+                                    }
+                                }
+                            }
+                            else if (customerName == "MetroMart")
+                            {
+                                var metroMartProofList = ExtractCSVMetroMart(tempCsvFilePath, club, selectedDate);
+                                if (metroMartProofList.Item1 == null)
+                                {
+                                    return (null, metroMartProofList.Item2);
+                                }
+                                else if (metroMartProofList.Item1.Count <= 0)
+                                {
+                                    return (null, metroMartProofList.Item2);
+                                }
+                                else
+                                {
+                                    foreach (var item in metroMartProofList.Item1)
+                                    {
+                                        proofList.Add(item);
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            return (null, "No worksheets.");
                         }
                     }
-                    else if(file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var tempCsvFilePath = Path.GetTempFileName() + ".csv";
+                }
 
-                        using (var fileStream = new FileStream(tempCsvFilePath, FileMode.Create))
-                        {
-                            file.CopyTo(fileStream);
-                        }
+                if (DataExistsInDatabase(proofList))
+                {
+                    customers.TryGetValue(customerName, out string value);
+                    var convertDate = GetDateTime(selectedDate);
+                    DeleteRecords(club, convertDate, value);
+                }
 
-                        if (customerName == "GrabMart" || customerName == "GrabFood")
-                        {
-                            var grabProofList = ExtractCSVGrabMartOrFood(tempCsvFilePath, customerName, club, selectedDate);
-                            if (grabProofList.Item1 == null)
-                            {
-                                return (null, grabProofList.Item2);
-                            }
-                            else if (!DataExistsInDatabase(grabProofList.Item1))
-                            {
-                                _dbContext.Prooflist.AddRange(grabProofList.Item1);
-                                _dbContext.SaveChanges();
-                                return (grabProofList);
-                            }
-                            else
-                            {
-                                return (null, "Proof list already uploaded!");
-                            }
-                        }
-                        else if (customerName == "PickARoo")
-                        {
-                            var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath, club, selectedDate);
-                            if (pickARooProofList.Item1 == null)
-                            {
-                                return (null, pickARooProofList.Item2);
-                            }
-                            else if (!DataExistsInDatabase(pickARooProofList.Item1))
-                            {
-                                _dbContext.Prooflist.AddRange(pickARooProofList.Item1);
-                                _dbContext.SaveChanges();
-                                return (pickARooProofList);
-                            }
-                            else
-                            {
-                                return (null, "Proof list already uploaded!");
-                            }
-                        }
-                        else if (customerName == "FoodPanda")
-                        {
-                            var foodPandaProofList = ExtractCSVFoodPanda(tempCsvFilePath, club, selectedDate);
-                            if (foodPandaProofList.Item1 == null)
-                            {
-                                return (null, foodPandaProofList.Item2);
-                            }
-                            else if (!DataExistsInDatabase(foodPandaProofList.Item1))
-                            {
-                                _dbContext.Prooflist.AddRange(foodPandaProofList.Item1);
-                                _dbContext.SaveChanges();
-                                return (foodPandaProofList);
-                            }
-                            else
-                            {
-                                return (null, "Proof list already uploaded!");
-                            }
-                        }
-                        else if (customerName == "MetroMart")
-                        {
-                            var metroMartProofList = ExtractCSVMetroMart(tempCsvFilePath, club, selectedDate);
-                            if (metroMartProofList.Item1 == null)
-                            {
-                                return (null, metroMartProofList.Item2);
-                            }
-                            else if (!DataExistsInDatabase(metroMartProofList.Item1))
-                            {
-                                _dbContext.Prooflist.AddRange(metroMartProofList.Item1);
-                                _dbContext.SaveChanges();
-                                return (metroMartProofList);
-                            }
-                            else
-                            {
-                                return (null, "Proof list already uploaded!");
-                            }
-                        }
-
-                        return (null, "No worksheets.");
-                    }
-                    else
-                    {
-                        return (null, "No worksheets.");
-                    }
-                } 
+                if (proofList != null)
+                {
+                    _dbContext.Prooflist.AddRange(proofList);
+                    _dbContext.SaveChanges();
+                    return (proofList, "Success");
+                }
+                else
+                {
+                    return (proofList, "No list found.");
+                }
             }
             catch (Exception ex)
             {
                 return (null, $"Please check error in row {row}: {ex.Message}");
                 throw;
+            }
+        }
+
+        private void DeleteRecords(int club, DateTime? selectedDate, string customerId)
+        {
+            var dataToDelete = _dbContext.Prooflist
+                .Where(x => x.CustomerId == customerId && x.TransactionDate == selectedDate && x.StoreId == club)
+                .ToList();
+
+            if (dataToDelete != null)
+            {
+                _dbContext.Prooflist.RemoveRange(dataToDelete);
+                _dbContext.SaveChanges();
             }
         }
 

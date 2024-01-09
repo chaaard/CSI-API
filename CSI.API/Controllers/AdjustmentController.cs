@@ -47,10 +47,10 @@ namespace CSI.API.Controllers
             return (NotFound());
         }
 
-        [HttpGet("GetReasonsAsync")]
-        public async Task<IActionResult> GetReasonsAsync()
+        [HttpPut("UpdateAnalyticsProofList")]
+        public async Task<IActionResult> UpdateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto)
         {
-            var result = await _adjustmentService.GetReasonsAsync();
+            var result = await _adjustmentService.UpdateAnalyticsProofList(adjustmentTypeDto);
 
             if (result != null)
             {
@@ -83,10 +83,34 @@ namespace CSI.API.Controllers
             return (NotFound());
         }
 
+        [HttpGet("GetReasonsAsync")]
+        public async Task<IActionResult> GetReasonsAsync()
+        {
+            var result = await _adjustmentService.GetReasonsAsync();
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
+
         [HttpPost("GetTotalCountAmount")]
         public async Task<IActionResult> GetTotalCountAmount(TransactionCountAmountDto transactionCountAmountDto)
         {
             var result = await _adjustmentService.GetTotalCountAmount(transactionCountAmountDto);
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
+
+        [HttpPost("ExportExceptions")]
+        public async Task<IActionResult> ExportExceptions(AdjustmentParams adjustmentTypeDto)
+        {
+            var result = await _adjustmentService.ExportExceptions(adjustmentTypeDto);
 
             if (result != null)
             {

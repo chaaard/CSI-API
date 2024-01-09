@@ -5,6 +5,7 @@ using CSI.Domain.Entities;
 using CSI.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,30 +28,49 @@ namespace CSI.Application.Services
         public async Task<(List<AdjustmentDto>, int totalPages)> GetAdjustmentsAsync(AdjustmentParams adjustmentParams)
         {
             DateTime date;
-
             IQueryable<AdjustmentDto> query = Enumerable.Empty<AdjustmentDto>().AsQueryable();
             if (DateTime.TryParse(adjustmentParams.dates[0], out date))
             {
-                 query = _dbContext.AnalyticsProoflist
-                .Join(_dbContext.Analytics, ap => ap.AnalyticsId, a => a.Id, (ap, a) => new { ap, a })
-                .GroupJoin(_dbContext.Prooflist, x => x.ap.ProoflistId, p => p.Id, (x, p) => new { x.ap, x.a, Prooflist = p })
-                .SelectMany(x => x.Prooflist.DefaultIfEmpty(), (x, p) => new { x.ap, x.a, Prooflist = p })
-                .Join(_dbContext.CustomerCodes, x => x.a.CustomerId, c => c.CustomerCode, (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
-                .Join(_dbContext.Adjustments, x => x.ap.AdjustmentId, ad => ad.Id, (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
-                .Join(_dbContext.Actions, x => x.ap.ActionId, ac => ac.Id, (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
-                .Join(_dbContext.Status, x => x.ap.StatusId, s => s.Id, (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
-                .Where(x => x.a.TransactionDate == date && x.a.LocationId == adjustmentParams.storeId[0] && x.a.CustomerId == adjustmentParams.memCode[0])
-                .Select(x => new AdjustmentDto
-                {
-                    Id = x.ap.Id,
-                    CustomerId = x.Customer.CustomerName,
-                    JoNumber = x.Adjustment.NewJO != null ? x.Adjustment.NewJO : x.a.OrderNo,
-                    TransactionDate = x.a.TransactionDate,
-                    Amount = x.a.SubTotal,
-                    AdjustmentType = x.Action.Action,
-                    Status = x.Status.StatusName
-                })
-                .OrderBy(x => x.Id);
+                query = _dbContext.AnalyticsProoflist
+                    .GroupJoin(_dbContext.Analytics, ap => ap.AnalyticsId, a => a.Id, (ap, a) => new { ap, a })
+                    .SelectMany(x => x.a.DefaultIfEmpty(), (x, a) => new { x.ap, a })
+                    .GroupJoin(_dbContext.Prooflist, x => x.ap.ProoflistId, p => p.Id, (x, p) => new { x.ap, x.a, Prooflist = p })
+                    .SelectMany(x => x.Prooflist.DefaultIfEmpty(), (x, p) => new { x.ap, x.a, Prooflist = p })
+                    .GroupJoin(_dbContext.CustomerCodes, x => x.a.CustomerId, c => c.CustomerCode, (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
+                    .SelectMany(x => x.Customer.DefaultIfEmpty(), (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
+                    .GroupJoin(_dbContext.Adjustments, x => x.ap.AdjustmentId, ad => ad.Id, (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
+                    .SelectMany(x => x.Adjustment.DefaultIfEmpty(), (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
+                    .GroupJoin(_dbContext.Actions, x => x.ap.ActionId, ac => ac.Id, (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
+                    .SelectMany(x => x.Action.DefaultIfEmpty(), (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
+                    .GroupJoin(_dbContext.Status, x => x.ap.StatusId, s => s.Id, (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                    .SelectMany(x => x.Status.DefaultIfEmpty(), (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                    .Join(_dbContext.Locations, x => x.a.LocationId, l => l.LocationCode, (x, l) => new { x, l })
+                    .Where(x => x.x.a.TransactionDate == date && x.x.a.LocationId == adjustmentParams.storeId[0] && x.x.a.CustomerId == adjustmentParams.memCode[0])
+                    .Select(x => new AdjustmentDto
+                    {
+                        Id = x.x.ap.Id,
+                        CustomerId = x.x.Customer.CustomerName,
+                        JoNumber = x.x.a.OrderNo,
+                        TransactionDate = x.x.a.TransactionDate,
+                        Amount = x.x.a.SubTotal,
+                        AdjustmentType = x.x.Action.Action,
+                        Status = x.x.Status.StatusName,
+                        AdjustmentId = x.x.ap.AdjustmentId,
+                        LocationName = x.l.LocationName,
+                        AnalyticsId = x.x.ap.AnalyticsId,
+                        ProofListId = x.x.ap.ProoflistId,
+                        OldJo = x.x.Adjustment.OldJO,
+                        OldCustomerId = x.x.Adjustment.CustomerIdOld,
+                        DisputeReferenceNumber = x.x.Adjustment.DisputeReferenceNumber,
+                        DisputeAmount = x.x.Adjustment.DisputeAmount,
+                        DateDisputeFiled = x.x.Adjustment.DateDisputeFiled,
+                        DescriptionOfDispute = x.x.Adjustment.DescriptionOfDispute,
+                        AccountsPaymentDate = x.x.Adjustment.AccountsPaymentDate,
+                        AccountsPaymentTransNo = x.x.Adjustment.AccountsPaymentTransNo,
+                        AccountsPaymentAmount = x.x.Adjustment.AccountsPaymentAmount,
+                        ReasonId = x.x.Adjustment.ReasonId
+                    })
+                    .OrderBy(x => x.Id);
             }
 
             var totalItemCount = await query.CountAsync();
@@ -67,7 +87,7 @@ namespace CSI.Application.Services
 
         public async Task<AnalyticsProoflist> CreateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto)
         {
-            var analyticsProoflist = new AnalyticsProoflist();
+            var analyticsProoflist = new AnalyticsProoflist();     
             var adjustmentId = await CreateAdjustment(adjustmentTypeDto.AdjustmentAddDto);
 
             if (adjustmentId != 0)
@@ -82,6 +102,41 @@ namespace CSI.Application.Services
             }
 
             return analyticsProoflist;
+        }
+
+        public async Task<bool> UpdateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto)
+        {
+            var result = false;
+            var adjustmentStatus = await _dbContext.AnalyticsProoflist
+                      .Where(x => x.Id == adjustmentTypeDto.Id)
+                      .FirstOrDefaultAsync();
+
+            if (adjustmentStatus != null)
+            {
+                adjustmentStatus.StatusId = adjustmentTypeDto.StatusId ?? 0;
+                adjustmentStatus.ActionId = adjustmentTypeDto.ActionId ?? 0;
+                await _dbContext.SaveChangesAsync();
+            }
+
+            var adjustments = await _dbContext.Adjustments
+                      .Where(x => x.Id == adjustmentTypeDto.AdjustmentId)
+                      .FirstOrDefaultAsync();
+
+            if (adjustments != null)
+            {
+                adjustments.DisputeReferenceNumber = adjustmentTypeDto?.AdjustmentAddDto?.DisputeReferenceNumber;
+                adjustments.DisputeAmount = adjustmentTypeDto?.AdjustmentAddDto?.DisputeAmount;
+                adjustments.DateDisputeFiled = adjustmentTypeDto?.AdjustmentAddDto?.DateDisputeFiled;
+                adjustments.DescriptionOfDispute = adjustmentTypeDto?.AdjustmentAddDto?.DescriptionOfDispute;
+                adjustments.AccountsPaymentDate = adjustmentTypeDto?.AdjustmentAddDto?.AccountsPaymentDate;
+                adjustments.AccountsPaymentTransNo = adjustmentTypeDto?.AdjustmentAddDto?.AccountsPaymentTransNo;
+                adjustments.AccountsPaymentAmount = adjustmentTypeDto?.AdjustmentAddDto?.AccountsPaymentAmount;
+                adjustments.ReasonId = adjustmentTypeDto?.AdjustmentAddDto?.ReasonId;
+                await _dbContext.SaveChangesAsync();
+                result = true;
+            }
+
+            return result;
         }
 
         public async Task<int> CreateAdjustment(AdjustmentAddDto? adjustmentAddDto)
@@ -108,25 +163,10 @@ namespace CSI.Application.Services
             }
         }
 
-        public async Task<List<Reasons>> GetReasonsAsync()
-        {
-            try
-            {
-                var reasons = await _dbContext.Reasons
-                        .Where(x => x.DeleteFlag == false)
-                        .ToListAsync();
-              
-                return reasons;
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-        }
-
         public async Task<bool> UpdateJO(AnalyticsProoflistDto adjustmentTypeDto)
         {
             var result = false;
+            var oldJO = "";
             try
             {
                 if (adjustmentTypeDto != null)
@@ -135,9 +175,34 @@ namespace CSI.Application.Services
                        .Where(x => x.Id == adjustmentTypeDto.AnalyticsId)
                        .FirstOrDefaultAsync();
 
+                  
                     if (matchRow != null)
                     {
+                        oldJO = matchRow.OrderNo;
                         matchRow.OrderNo = adjustmentTypeDto?.AdjustmentAddDto?.NewJO;
+                        await _dbContext.SaveChangesAsync();
+                        result = true;
+                    }
+
+                    var adjustmentStatus = await _dbContext.AnalyticsProoflist
+                     .Where(x => x.Id == adjustmentTypeDto.Id)
+                     .FirstOrDefaultAsync();
+
+                    if (adjustmentStatus != null)
+                    {
+                        adjustmentStatus.StatusId = adjustmentTypeDto.StatusId ?? 0;
+                        adjustmentStatus.ActionId = adjustmentTypeDto.ActionId ?? 0;
+                        await _dbContext.SaveChangesAsync();
+                    }
+
+                    var adjustments = await _dbContext.Adjustments
+                              .Where(x => x.Id == adjustmentTypeDto.AdjustmentId)
+                              .FirstOrDefaultAsync();
+
+                    if (adjustments != null)
+                    {
+                        adjustments.OldJO = oldJO;
+                        adjustments.NewJO = adjustmentTypeDto?.AdjustmentAddDto?.NewJO;
                         await _dbContext.SaveChangesAsync();
                         result = true;
                     }
@@ -153,6 +218,7 @@ namespace CSI.Application.Services
         public async Task<bool> UpdatePartner(AnalyticsProoflistDto adjustmentTypeDto)
         {
             var result = false;
+            var oldCustomerId = "";
             try
             {
                 if (adjustmentTypeDto != null)
@@ -163,12 +229,52 @@ namespace CSI.Application.Services
 
                     if (matchRow != null)
                     {
+                        oldCustomerId = matchRow.CustomerId;
                         matchRow.CustomerId = adjustmentTypeDto?.AdjustmentAddDto?.CustomerId;
+                        await _dbContext.SaveChangesAsync();
+                        result = true;
+                    }
+
+                    var adjustmentStatus = await _dbContext.AnalyticsProoflist
+                    .Where(x => x.Id == adjustmentTypeDto.Id)
+                    .FirstOrDefaultAsync();
+
+                    if (adjustmentStatus != null)
+                    {
+                        adjustmentStatus.StatusId = adjustmentTypeDto.StatusId ?? 0;
+                        adjustmentStatus.ActionId = adjustmentTypeDto.ActionId ?? 0;
+                        await _dbContext.SaveChangesAsync();
+                    }
+
+                    var adjustments = await _dbContext.Adjustments
+                              .Where(x => x.Id == adjustmentTypeDto.AdjustmentId)
+                              .FirstOrDefaultAsync();
+
+                    if (adjustments != null)
+                    {
+                        adjustments.CustomerIdOld = oldCustomerId;
+                        adjustments.CustomerId = adjustmentTypeDto?.AdjustmentAddDto?.CustomerId;
                         await _dbContext.SaveChangesAsync();
                         result = true;
                     }
                 }
                 return result;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public async Task<List<Reasons>> GetReasonsAsync()
+        {
+            try
+            {
+                var reasons = await _dbContext.Reasons
+                        .Where(x => x.DeleteFlag == false)
+                        .ToListAsync();
+
+                return reasons;
             }
             catch (Exception)
             {
@@ -201,6 +307,47 @@ namespace CSI.Application.Services
                  .FirstOrDefaultAsync();
 
             return result ?? new TransactionDtos();
+        }
+
+        public async Task<List<ExceptionDto>> ExportExceptions(AdjustmentParams adjustmentParams)
+        {
+            var result = new List<ExceptionDto>();
+            DateTime date;
+            IQueryable<ExceptionDto> query = Enumerable.Empty<ExceptionDto>().AsQueryable();
+            if (DateTime.TryParse(adjustmentParams.dates[0], out date))
+            {
+                query = _dbContext.AnalyticsProoflist
+                    .GroupJoin(_dbContext.Analytics, ap => ap.AnalyticsId, a => a.Id, (ap, a) => new { ap, a })
+                    .SelectMany(x => x.a.DefaultIfEmpty(), (x, a) => new { x.ap, a })
+                    .GroupJoin(_dbContext.Prooflist, x => x.ap.ProoflistId, p => p.Id, (x, p) => new { x.ap, x.a, Prooflist = p })
+                    .SelectMany(x => x.Prooflist.DefaultIfEmpty(), (x, p) => new { x.ap, x.a, Prooflist = p })
+                    .GroupJoin(_dbContext.CustomerCodes, x => x.a.CustomerId, c => c.CustomerCode, (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
+                    .SelectMany(x => x.Customer.DefaultIfEmpty(), (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
+                    .GroupJoin(_dbContext.Adjustments, x => x.ap.AdjustmentId, ad => ad.Id, (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
+                    .SelectMany(x => x.Adjustment.DefaultIfEmpty(), (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
+                    .GroupJoin(_dbContext.Actions, x => x.ap.ActionId, ac => ac.Id, (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
+                    .SelectMany(x => x.Action.DefaultIfEmpty(), (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
+                    .GroupJoin(_dbContext.Status, x => x.ap.StatusId, s => s.Id, (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                    .SelectMany(x => x.Status.DefaultIfEmpty(), (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
+                    .Join(_dbContext.Locations, x => x.a.LocationId, l => l.LocationCode, (x, l) => new { x, l })
+                    .Where(x => x.x.a.TransactionDate == date && x.x.a.LocationId == adjustmentParams.storeId[0] && x.x.a.CustomerId == adjustmentParams.memCode[0])
+                    .Select(x => new ExceptionDto
+                    {
+                        Id = x.x.ap.Id,
+                        CustomerId = x.x.Customer.CustomerName,
+                        JoNumber = x.x.a.OrderNo,
+                        TransactionDate = x.x.a.TransactionDate,
+                        Amount = x.x.a.SubTotal,
+                        AdjustmentType = x.x.Action.Action,
+                        Status = x.x.Status.StatusName,
+                        AdjustmentId = x.x.ap.AdjustmentId,
+                        LocationName = x.l.LocationName,
+                    })
+                    .OrderBy(x => x.Id);
+
+                result = await query.ToListAsync();
+            }
+            return result;
         }
     }
 }
