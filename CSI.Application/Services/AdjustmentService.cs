@@ -309,11 +309,11 @@ namespace CSI.Application.Services
             return result ?? new TransactionDtos();
         }
 
-        public async Task<List<AdjustmentDto>> ExportExceptions(AdjustmentParams adjustmentParams)
+        public async Task<List<ExceptionDto>> ExportExceptions(AdjustmentParams adjustmentParams)
         {
-            var result = new List<AdjustmentDto>();
+            var result = new List<ExceptionDto>();
             DateTime date;
-            IQueryable<AdjustmentDto> query = Enumerable.Empty<AdjustmentDto>().AsQueryable();
+            IQueryable<ExceptionDto> query = Enumerable.Empty<ExceptionDto>().AsQueryable();
             if (DateTime.TryParse(adjustmentParams.dates[0], out date))
             {
                 query = _dbContext.AnalyticsProoflist
@@ -331,7 +331,7 @@ namespace CSI.Application.Services
                     .SelectMany(x => x.Status.DefaultIfEmpty(), (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
                     .Join(_dbContext.Locations, x => x.a.LocationId, l => l.LocationCode, (x, l) => new { x, l })
                     .Where(x => x.x.a.TransactionDate == date && x.x.a.LocationId == adjustmentParams.storeId[0] && x.x.a.CustomerId == adjustmentParams.memCode[0])
-                    .Select(x => new AdjustmentDto
+                    .Select(x => new ExceptionDto
                     {
                         Id = x.x.ap.Id,
                         CustomerId = x.x.Customer.CustomerName,
@@ -345,11 +345,7 @@ namespace CSI.Application.Services
                     })
                     .OrderBy(x => x.Id);
 
-                 result  = await query
-                   .Skip((adjustmentParams.PageNumber - 1) * adjustmentParams.PageSize)
-                   .Take(adjustmentParams.PageSize)
-                   .OrderBy(x => x.Id)
-                   .ToListAsync();
+                result = await query.ToListAsync();
             }
             return result;
         }
