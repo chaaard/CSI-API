@@ -182,6 +182,86 @@ namespace CSI.Application.Services
             return analytics;
         }
 
+        private async Task<List<AnalyticsDto>> ReturnTotalAnalytics(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var result = await _dbContext.AnalyticsView
+                   .FromSqlRaw(
+                       $" WITH RankedOrders AS ( " +
+                       $"    SELECT  " +
+                       $"        a.Id,  " +
+                       $"        a.CustomerId,  " +
+                       $"        l.LocationName,  " +
+                       $"        a.LocationId,  " +
+                       $"        a.TransactionDate,  " +
+                       $"        a.MembershipNo,  " +
+                       $"        a.CashierNo,  " +
+                       $"        a.RegisterNo,  " +
+                       $"        a.TransactionNo,  " +
+                       $"        a.OrderNo,  " +
+                       $"        a.Qty,  " +
+                       $"        a.Amount,  " +
+                       $"        SUM(a.SubTotal), " +
+                       $"        a.UserId,  " +
+                       $"        a.StatusId, " +
+                       $"        a.DeleteFlag,  " +
+                       $"        ROW_NUMBER() OVER (PARTITION BY a.LocationId, a.TransactionDate, a.OrderNo ORDER BY a.TransactionNo DESC) AS RowNum  " +
+                       $"    FROM  " +
+                       $"       tbl_analytics a  " +
+                       $"   INNER JOIN  " +
+                       $"        [dbo].[tbl_location] l ON a.LocationId = l.LocationCode  " +
+                       $"    WHERE  " +
+                       $"        a.SubTotal >= 0 AND (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}')  " +
+                       $" )  " +
+                       $" , FilteredOrders AS (  " +
+                       $"    SELECT  " +
+                       $"        Id,  " +
+                       $"        CustomerId,  " +
+                       $"        LocationName,  " +
+                       $"        TransactionDate,  " +
+                       $"        MembershipNo,  " +
+                       $"        CashierNo,  " +
+                       $"        RegisterNo,  " +
+                       $"        TransactionNo,  " +
+                       $"        OrderNo,  " +
+                       $"        Qty,  " +
+                       $"        Amount,  " +
+                       $"        SubTotal,  " +
+                       $"        UserId,  " +
+                       $"        StatusId,  " +
+                       $"        DeleteFlag  " +
+                       $"    FROM  " +
+                       $"        RankedOrders  " +
+                       $"    WHERE  " +
+                       $"        RowNum = 1  " +
+                       $"        OR  " +
+                       $"        (RowNum = 2 AND NOT EXISTS (SELECT 1 FROM RankedOrders WHERE RowNum = 1 AND OrderNo = RankedOrders.OrderNo))  " +
+                       $" )  " +
+                       $" SELECT * FROM FilteredOrders; "
+                       )
+                   .ToListAsync();
+
+            var analytics = result.Select(n => new AnalyticsDto
+            {
+                Id = n.Id,
+                CustomerId = n.CustomerId,
+                LocationName = n.LocationName,
+                TransactionDate = n.TransactionDate,
+                MembershipNo = n.MembershipNo,
+                CashierNo = n.CashierNo,
+                RegisterNo = n.RegisterNo,
+                TransactionNo = n.TransactionNo,
+                OrderNo = n.OrderNo,
+                Qty = n.Qty,
+                Amount = n.Amount,
+                SubTotal = n.SubTotal,
+                UserId = n.UserId,
+                StatusId = n.StatusId,
+                DeleteFlag = n.DeleteFlag,
+            }).ToList();
+
+            return analytics;
+        }
+
         public async Task<decimal?> GetTotalAmountPerMechant(AnalyticsParamsDto analyticsParamsDto)
         {
             DateTime date;
@@ -492,6 +572,7 @@ namespace CSI.Application.Services
             var invoiceAnalytics = new List<InvoiceDto>();
             var isPending = false;
             var result = await ReturnAnalytics(analyticsParamsDto);
+            var total = result.Sum(x => x.SubTotal);
             var locationList = await GetLocations();
 
             isPending = result
@@ -504,10 +585,10 @@ namespace CSI.Application.Services
             }
             else
             {
-                foreach (var item in result)
-                {
+                //foreach (var item in result)
+                //{
                     var getShortName = locationList
-                        .Where(x => x.LocationName.Contains(item.LocationName))
+                        .Where(x => x.LocationName.Contains(result.FirstOrDefault().LocationName))
                         .Select(n => new
                         {
                             n.ShortName,
@@ -516,28 +597,28 @@ namespace CSI.Application.Services
 
                     var invoice = new InvoiceDto
                     {
-                        HDR_TRX_NUMBER = item.TransactionNo + "I",
-                        HDR_TRX_DATE = item.TransactionDate,
+                        HDR_TRX_NUMBER = "0000000" + "I",
+                        HDR_TRX_DATE = result.FirstOrDefault().TransactionDate,
                         HDR_PAYMENT_TYPE = "HS",
                         HDR_BRANCH_CODE = getShortName.ShortName ?? "",
-                        HDR_CUSTOMER_NUMBER = item.CustomerId + " P",
+                        HDR_CUSTOMER_NUMBER = result.FirstOrDefault().CustomerId + " P",
                         HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
                         HDR_PAYMENT_TERM = "0",
                         HDR_BUSINESS_LINE = "1",
                         HDR_BATCH_SOURCE_NAME = "POS",
-                        HDR_GL_DATE = item.TransactionDate,
+                        HDR_GL_DATE = result.FirstOrDefault().TransactionDate,
                         HDR_SOURCE_REFERENCE = "HS",
                         DTL_LINE_DESC = "GEI225101523-15",
                         DTL_QUANTITY = 1,
-                        DTL_AMOUNT = item.Amount,
+                        DTL_AMOUNT = total,
                         DTL_VAT_CODE = "",
                         DTL_CURRENCY = "PHP",
                         INVOICE_APPLIED = "0",
                         FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
                     };
 
-                    invoiceAnalytics.Add(invoice);
-                }
+                invoiceAnalytics.Add(invoice);
+                //}
                 return (invoiceAnalytics, isPending);
             }
         }
