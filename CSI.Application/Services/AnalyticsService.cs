@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using AutoMapper.Configuration.Annotations;
+using AutoMapper.Execution;
 using CSI.Application.DTOs;
 using CSI.Application.Interfaces;
 using CSI.Domain.Entities;
@@ -373,9 +375,39 @@ namespace CSI.Application.Services
             string getQuery = string.Empty;
             var deptCodeList = await GetDepartments();
             var deptCodes = string.Join(", ", deptCodeList);
-
             string cstDocCondition = $"CSTDOC IN ({string.Join(", ", analyticsParam.memCode.Select(code => $"''{code}''"))})";
             string storeList = $"CSSTOR IN ({string.Join(", ", analyticsParam.storeId.Select(code => $"{code}"))})";
+
+            DateTime date;
+            if (DateTime.TryParse(analyticsParam.dates[0].ToString(), out date))
+            {
+                var analyticsToDelete = _dbContext.Analytics
+                   .Where(a => a.TransactionDate == date &&
+                               a.CustomerId == analyticsParam.memCode[0] &&
+                               a.LocationId == analyticsParam.storeId[0]);
+
+                var analyticsIdList = await analyticsToDelete.Select(n => n.Id).ToListAsync();
+
+                _dbContext.Analytics.RemoveRange(analyticsToDelete);
+                await _dbContext.SaveChangesAsync();
+
+                var adjustmentProoflistToDelete = await _dbContext.AnalyticsProoflist
+                    .Where(x => analyticsIdList.Contains(x.AnalyticsId))
+                    .ToListAsync();
+
+                var adjustmentIdList = adjustmentProoflistToDelete.Select(n => n.AdjustmentId).ToList();
+
+                _dbContext.AnalyticsProoflist.RemoveRange(adjustmentProoflistToDelete);
+                await _dbContext.SaveChangesAsync();
+
+                var adjustmentToDelete = await _dbContext.Adjustments
+                   .Where(x => adjustmentIdList.Contains(x.Id))
+                   .ToListAsync();
+
+                _dbContext.Adjustments.RemoveRange(adjustmentToDelete);
+                await _dbContext.SaveChangesAsync();
+            }
+           
             try
             {
                 await _dbContext.Database.ExecuteSqlRawAsync($"CREATE TABLE ANALYTICS_CSHTND{strStamp} (CSDATE VARCHAR(255), CSSTOR INT, CSREG INT, CSTRAN INT, CSTDOC VARCHAR(50), CSCARD VARCHAR(50), CSDTYP VARCHAR(50), CSTIL INT)");
@@ -462,6 +494,39 @@ namespace CSI.Application.Services
                                   $"ORDER BY C.CSSTOR, C.CSDATE, C.CSREG ");
 
                 await DropTables(strStamp);
+
+                var MatchDto = await GetMatchAnalyticsAndProofList(analyticsParam);
+
+                foreach (var item in MatchDto)
+                {
+                    var param = new AnalyticsProoflistDto
+                    {
+                        Id = 0,
+                        AnalyticsId = item.AnalyticsId,
+                        ProoflistId = item.ProofListId,
+                        ActionId = null,
+                        StatusId = 5,
+                        AdjustmentId = 0,
+                        DeleteFlag = false,
+                        AdjustmentAddDto = new AdjustmentAddDto
+                        {
+                            Id = 0,
+                            DisputeReferenceNumber = null,
+                            DisputeAmount = null,
+                            DateDisputeFiled = null,
+                            DescriptionOfDispute = null,
+                            NewJO = null,
+                            CustomerId = null,
+                            AccountsPaymentDate = null,
+                            AccountsPaymentTransNo = null,
+                            AccountsPaymentAmount = null,
+                            ReasonId = null,
+                            DeleteFlag = null,
+                        }
+                    };
+
+                    var result = await CreateAnalyticsProofList(param);
+                }
             }
             catch (Exception ex)
             {
@@ -469,6 +534,142 @@ namespace CSI.Application.Services
                 throw;
             }
         }
+
+        public async Task<AnalyticsProoflist> CreateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto)
+        {
+            var analyticsProoflist = new AnalyticsProoflist();
+            var adjustmentId = await CreateAdjustment(adjustmentTypeDto.AdjustmentAddDto);
+
+            if (adjustmentId != 0)
+            {
+                adjustmentTypeDto.AdjustmentId = adjustmentId;
+
+                analyticsProoflist = _mapper.Map<AnalyticsProoflistDto, AnalyticsProoflist>(adjustmentTypeDto);
+                _dbContext.AnalyticsProoflist.Add(analyticsProoflist);
+                await _dbContext.SaveChangesAsync();
+
+                return analyticsProoflist;
+            }
+
+            return analyticsProoflist;
+        }
+
+        public async Task<int> CreateAdjustment(AdjustmentAddDto? adjustmentAddDto)
+        {
+            try
+            {
+                var id = 0;
+                if (adjustmentAddDto != null)
+                {
+                    var adjustments = _mapper.Map<AdjustmentAddDto, Adjustments>(adjustmentAddDto);
+                    _dbContext.Adjustments.Add(adjustments);
+                    await _dbContext.SaveChangesAsync();
+
+                    id = adjustments.Id;
+
+                    return id;
+                }
+                return id;
+            }
+            catch (Exception ex)
+            {
+                var message = ex.Message;
+                throw;
+            }
+        }
+
+        public async Task<List<MatchDto>> GetMatchAnalyticsAndProofList(RefreshAnalyticsDto analyticsParamsDto)
+        {
+            try
+            {
+                var result = await _dbContext.Match
+                    .FromSqlRaw($"WITH RankedData AS (" +
+                                $"    SELECT " +
+                                $"        a.[Id], " +
+                                $"        c.CustomerName, " +
+                                $"        l.LocationName, " +
+                                $"        a.[TransactionDate], " +
+                                $"        a.[OrderNo], " +
+                                $"        a.[SubTotal], " +
+                                $"        ROW_NUMBER() OVER (PARTITION BY a.[OrderNo] ORDER BY a.[TransactionNo] DESC) AS RowNum " +
+                                $"    FROM " +
+                                $"        [dbo].[tbl_analytics] a " +
+                                $"        LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = a.LocationId " +
+                                $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = a.CustomerId " +
+                                $"    WHERE " +
+                                $"        (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId = '{analyticsParamsDto.memCode[0]}')" +
+                                $"), " +
+                                $"FilteredData AS (" +
+                                $"    SELECT " +
+                                $"        Id, " +
+                                $"        CustomerName, " +
+                                $"        LocationName, " +
+                                $"        [TransactionDate], " +
+                                $"        [OrderNo], " +
+                                $"        [SubTotal], " +
+                                $"        RowNum " +
+                                $"    FROM RankedData " +
+                                $"    WHERE RowNum = 1 AND [SubTotal] >= 1" +
+                                $") " +
+                                $"SELECT " +
+                                $"    a.[Id] AS [AnalyticsId], " +
+                                $"    a.CustomerName AS [AnalyticsPartner], " +
+                                $"    a.LocationName AS [AnalyticsLocation], " +
+                                $"    a.[TransactionDate] AS [AnalyticsTransactionDate], " +
+                                $"    a.[OrderNo] AS [AnalyticsOrderNo], " +
+                                $"    a.[SubTotal] AS [AnalyticsAmount], " +
+                                $"    p.[Id] AS [ProofListId], " +
+                                $"    p.[TransactionDate] AS [ProofListTransactionDate], " +
+                                $"    p.[OrderNo] AS [ProofListOrderNo], " +
+                                $"    p.[Amount] AS [ProofListAmount] " +
+                                $"FROM " +
+                                $"    FilteredData a " +
+                                $"FULL OUTER JOIN " +
+                                $"    ( " +
+                                $"        SELECT " +
+                                $"            p.[Id], " +
+                                $"            c.CustomerName, " +
+                                $"            l.LocationName, " +
+                                $"            p.[TransactionDate], " +
+                                $"            p.[OrderNo], " +
+                                $"            p.[Amount] " +
+                                $"        FROM " +
+                                $"            [dbo].[tbl_prooflist] p " +
+                                $"            LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
+                                $"            LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId " +
+                                $"        WHERE " +
+                                $"            (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId = '{analyticsParamsDto.memCode[0]}' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4) " +
+                                $"    ) p " +
+                                $"ON a.[OrderNo] = p.[OrderNo];")
+                    .ToListAsync();
+
+                var matchDtos = result.Select(m => new MatchDto
+                {
+                    AnalyticsId = m.AnalyticsId,
+                    AnalyticsPartner = m.AnalyticsPartner,
+                    AnalyticsLocation = m.AnalyticsLocation,
+                    AnalyticsTransactionDate = m.AnalyticsTransactionDate,
+                    AnalyticsOrderNo = m.AnalyticsOrderNo,
+                    AnalyticsAmount = m.AnalyticsAmount,
+                    ProofListId = m.ProofListId,
+                    ProofListTransactionDate = m.ProofListTransactionDate,
+                    ProofListOrderNo = m.ProofListOrderNo,
+                    ProofListAmount = m.ProofListAmount,
+                    Variance = (m.AnalyticsAmount == null) ? m.ProofListAmount : (m.ProofListAmount == null) ? m.AnalyticsAmount : m.AnalyticsAmount - m.ProofListAmount.Value,
+                }).ToList();
+
+                var updateMatchDto = matchDtos
+                    .Where(x => x.ProofListId == null)
+                    .ToList();
+
+                return updateMatchDto;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
         private async Task DropTables(string strStamp)
         {
             try
@@ -503,67 +704,25 @@ namespace CSI.Application.Services
 
         public async Task<bool> SubmitAnalytics(AnalyticsParamsDto analyticsParamsDto)
         {
-            DateTime date;
             var isPending = true;
-            IQueryable<AdjustmentDto> query = Enumerable.Empty<AdjustmentDto>().AsQueryable();
-            if (DateTime.TryParse(analyticsParamsDto.dates[0], out date))
+            var result = await ReturnAnalytics(analyticsParamsDto);
+
+            foreach (var analytics in result)
             {
-                query = _dbContext.AnalyticsProoflist
-                    .GroupJoin(_dbContext.Analytics, ap => ap.AnalyticsId, a => a.Id, (ap, a) => new { ap, a })
-                    .SelectMany(x => x.a.DefaultIfEmpty(), (x, a) => new { x.ap, a })
-                    .GroupJoin(_dbContext.Prooflist, x => x.ap.ProoflistId, p => p.Id, (x, p) => new { x.ap, x.a, Prooflist = p })
-                    .SelectMany(x => x.Prooflist.DefaultIfEmpty(), (x, p) => new { x.ap, x.a, Prooflist = p })
-                    .GroupJoin(_dbContext.CustomerCodes, x => x.a.CustomerId, c => c.CustomerCode, (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
-                    .SelectMany(x => x.Customer.DefaultIfEmpty(), (x, c) => new { x.ap, x.a, x.Prooflist, Customer = c })
-                    .GroupJoin(_dbContext.Adjustments, x => x.ap.AdjustmentId, ad => ad.Id, (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
-                    .SelectMany(x => x.Adjustment.DefaultIfEmpty(), (x, ad) => new { x.ap, x.a, x.Prooflist, x.Customer, Adjustment = ad })
-                    .GroupJoin(_dbContext.Actions, x => x.ap.ActionId, ac => ac.Id, (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
-                    .SelectMany(x => x.Action.DefaultIfEmpty(), (x, ac) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, Action = ac })
-                    .GroupJoin(_dbContext.Status, x => x.ap.StatusId, s => s.Id, (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
-                    .SelectMany(x => x.Status.DefaultIfEmpty(), (x, s) => new { x.ap, x.a, x.Prooflist, x.Customer, x.Adjustment, x.Action, Status = s })
-                    .Join(_dbContext.Locations, x => x.a.LocationId, l => l.LocationCode, (x, l) => new { x, l })
-                    .Where(x => x.x.a.TransactionDate == date && x.x.a.LocationId == analyticsParamsDto.storeId[0] && x.x.a.CustomerId == analyticsParamsDto.memCode[0])
-                    .Select(x => new AdjustmentDto
-                    {
-                        Id = x.x.ap.Id,
-                        CustomerId = x.x.Customer.CustomerName,
-                        JoNumber = x.x.a.OrderNo,
-                        TransactionDate = x.x.a.TransactionDate,
-                        Amount = x.x.a.SubTotal,
-                        AdjustmentType = x.x.Action.Action,
-                        Status = x.x.Status.StatusName,
-                        AdjustmentId = x.x.ap.AdjustmentId,
-                        LocationName = x.l.LocationName,
-                        AnalyticsId = x.x.ap.AnalyticsId,
-                        ProofListId = x.x.ap.ProoflistId
-                    })
-                    .OrderBy(x => x.Id);
+                analytics.StatusId = 3;
             }
 
-            isPending = await query
-                .Where(x => x.Status == "Pending")
-                .AnyAsync();
-
-            if (!isPending)
+            var analyticsEntityList = result.Select(analyticsDto =>
             {
-                var result = await ReturnAnalytics(analyticsParamsDto);
+                var analyticsEntity = _mapper.Map<Analytics>(analyticsDto);
+                analyticsEntity.StatusId = 3;
+                analyticsEntity.LocationId = analyticsParamsDto.storeId[0];
+                return analyticsEntity;
+            }).ToList();
 
-                foreach (var analytics in result)
-                {
-                    analytics.StatusId = 3;
-                }
+            _dbContext.BulkUpdate(analyticsEntityList);
+            await _dbContext.SaveChangesAsync();
 
-                var analyticsEntityList = result.Select(analyticsDto =>
-                {
-                    var analyticsEntity = _mapper.Map<Analytics>(analyticsDto);
-                    analyticsEntity.StatusId = 3;
-                    analyticsEntity.LocationId = analyticsParamsDto.storeId[0];
-                    return analyticsEntity;
-                }).ToList();
-
-                _dbContext.BulkUpdate(analyticsEntityList);
-                await _dbContext.SaveChangesAsync();
-            }
             return isPending;
         }
 
@@ -622,5 +781,34 @@ namespace CSI.Application.Services
                 return (invoiceAnalytics, isPending);
             }
         }
+
+        //public async Task<bool> IsSubmitted(PortalParamsDto portalParamsDto)
+        //{
+        //    var result = false;
+        //    var date = GetDateTime(portalParamsDto.dates[0].Date);
+        //    var result = await _dbContext.Prooflist
+        //        .Join(_dbContext.Locations, a => a.StoreId, b => b.LocationCode, (a, b) => new { a, b })
+        //        .Join(_dbContext.Status, c => c.a.StatusId, d => d.Id, (c, d) => new { c, d })
+        //        .Where(x => x.c.a.TransactionDate.Value.Date == date
+        //            && x.c.a.StoreId == portalParamsDto.storeId[0]
+        //            && x.c.a.CustomerId == portalParamsDto.memCode[0]
+        //            && x.c.a.StatusId != 4)
+        //        .Select(n => new PortalDto
+        //        {
+        //            Id = n.c.a.Id,
+        //            CustomerId = n.c.a.CustomerId,
+        //            TransactionDate = n.c.a.TransactionDate,
+        //            OrderNo = n.c.a.OrderNo,
+        //            NonMembershipFee = n.c.a.NonMembershipFee,
+        //            PurchasedAmount = n.c.a.PurchasedAmount,
+        //            Amount = n.c.a.Amount,
+        //            Status = n.d.StatusName,
+        //            StoreName = n.c.b.LocationName,
+        //            DeleteFlag = n.c.a.DeleteFlag
+        //        })
+        //        .ToListAsync();
+
+        //    return result;
+        //}
     }
 }
