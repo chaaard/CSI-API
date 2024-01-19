@@ -16,5 +16,7 @@ namespace CSI.Application.Interfaces
         Task RefreshAnalytics(RefreshAnalyticsDto analyticsParam);
         Task<bool> SubmitAnalytics(AnalyticsParamsDto analyticsParamsDto);
         Task<(List<InvoiceDto>, bool)> GenerateInvoiceAnalytics(AnalyticsParamsDto analyticsParamsDto);
+        Task<bool> IsSubmitted(AnalyticsParamsDto analyticsParamsDto);
+        Task UpdateUploadStatus(AnalyticsParamsDto analyticsParamsDto);
     }
 }

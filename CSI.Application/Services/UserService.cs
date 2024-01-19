@@ -205,6 +205,27 @@ namespace CSI.Application.Services
             }
         }
 
+        public async Task<bool?> IsLogin(string username)
+        {
+            var isLogin = false; //Login = true
+            if (username != null)
+            {
+                var result = await _dbContext.Users
+                     .Where(u => u.Username == username)
+                     .FirstOrDefaultAsync();
+                if (result != null)
+                {
+                    isLogin = result.IsLogin;
+                    return isLogin;
+                }
+                return null;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         public async Task<UserInfoDto> GetUserInfo(string username)
         {
             var result = new UserInfoDto();

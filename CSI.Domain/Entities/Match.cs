@@ -18,5 +18,6 @@ namespace CSI.Domain.Entities
         public DateTime? ProofListTransactionDate { get; set; }
         public string? ProofListOrderNo { get; set; } = string.Empty;
         public decimal? ProofListAmount { get; set; }
+        public int? IsUpload { get; set; }
     }
 }

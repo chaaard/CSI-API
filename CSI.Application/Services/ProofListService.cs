@@ -15,6 +15,7 @@ using CSI.Infrastructure.Data;
 using System.Security.Cryptography.X509Certificates;
 using CSI.Application.DTOs;
 using AutoMapper.Configuration.Annotations;
+using EFCore.BulkExtensions;
 
 namespace CSI.Application.Services
 {

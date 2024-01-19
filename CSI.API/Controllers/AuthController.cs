@@ -110,5 +110,17 @@ namespace CSI.API.Controllers
             }
             return NotFound();
         }
+
+        [HttpPost("IsLogin")]
+        public async Task<IActionResult> IsLogin(LoginDto login)
+        {
+            var result = await _userService.IsLogin(login.Username);
+
+            if (result != null)
+            {
+                return Ok(result);
+            }
+            return NotFound();
+        }
     }
 }

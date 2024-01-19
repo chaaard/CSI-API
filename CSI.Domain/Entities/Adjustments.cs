@@ -21,6 +21,7 @@ namespace CSI.Domain.Entities
         public string? AccountsPaymentTransNo { get; set; } = string.Empty;
         public decimal? AccountsPaymentAmount { get; set; }
         public int? ReasonId { get; set; }
+        public string? Descriptions { get; set; } = string.Empty;
         public bool DeleteFlag { get; set; }
     }
 }

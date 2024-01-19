@@ -131,5 +131,19 @@ namespace CSI.API.Controllers
             }
             return (NotFound());
         }
+
+        [HttpPost("IsSubmitted")]
+        public async Task<IActionResult> IsSubmitted(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var result = await _analyticsService.IsSubmitted(analyticsParamsDto);
+            return Ok(result); 
+        }
+
+        [HttpPost("UpdateUploadStatus")]
+        public async Task<IActionResult> UpdateUploadStatus(AnalyticsParamsDto analyticsParamsDto)
+        {
+            await _analyticsService.UpdateUploadStatus(analyticsParamsDto);
+            return Ok();
+        }
     }
 }

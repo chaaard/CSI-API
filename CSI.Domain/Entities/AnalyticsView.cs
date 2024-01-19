@@ -9,6 +9,7 @@ namespace CSI.Domain.Entities
     public class AnalyticsView
     {
         public int Id { get; set; }
+        public int LocationId { get; set; }
         public string? CustomerId { get; set; } = string.Empty;
         public string? LocationName { get; set; }
         public DateTime? TransactionDate { get; set; }
@@ -20,8 +21,7 @@ namespace CSI.Domain.Entities
         public int? Qty { get; set; }
         public decimal? Amount { get; set; }
         public decimal SubTotal { get; set; }
-        public Guid? UserId { get; set; }
         public int StatusId { get; set; }
-        public bool? DeleteFlag { get; set; }
+        public int? DeleteFlag { get; set; }
     }
 }
