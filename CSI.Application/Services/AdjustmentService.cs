@@ -64,37 +64,37 @@ namespace CSI.Application.Services
                             $"WHERE p.TransactionDate = '{adjustmentParams.dates[0].ToString()}' AND p.StoreId = {adjustmentParams.storeId[0]} AND p.CustomerId = '{adjustmentParams.memCode[0]}'")
                    .ToListAsync();
 
-                    query = result.Select(m => new AdjustmentDto
-                    {
-                        Id = m.Id,
-                        CustomerId = m.CustomerName,
-                        JoNumber = m.OrderNo,
-                        TransactionDate = m.TransactionDate,
-                        Amount = m.SubTotal,
-                        AdjustmentType = m.Action,
-                        Source = m.SourceType,
-                        Status = m.StatusName,
-                        AdjustmentId = m.AdjustmentId,
-                        LocationName = m.LocationName,
-                        AnalyticsId = m.AnalyticsId,
-                        ProofListId = m.ProoflistId,
-                        OldJo = m.OldJO,
-                        OldCustomerId = m.CustomerIdOld,
-                        DisputeReferenceNumber = m.DisputeReferenceNumber,
-                        DisputeAmount = m.DisputeAmount,
-                        DateDisputeFiled = m.DateDisputeFiled,
-                        DescriptionOfDispute = m.DescriptionOfDispute,
-                        AccountsPaymentDate = m.AccountsPaymentDate,
-                        AccountsPaymentTransNo = m.AccountsPaymentTransNo,
-                        AccountsPaymentAmount = m.AccountsPaymentAmount,
-                        ReasonId = m.ReasonId,
-                        Descriptions = m.Descriptions
-                    }).AsQueryable();
+            query = result.Select(m => new AdjustmentDto
+            {
+                Id = m.Id,
+                CustomerId = m.CustomerName,
+                JoNumber = m.OrderNo,
+                TransactionDate = m.TransactionDate,
+                Amount = m.SubTotal,
+                AdjustmentType = m.Action,
+                Source = m.SourceType,
+                Status = m.StatusName,
+                AdjustmentId = m.AdjustmentId,
+                LocationName = m.LocationName,
+                AnalyticsId = m.AnalyticsId,
+                ProofListId = m.ProoflistId,
+                OldJo = m.OldJO,
+                OldCustomerId = m.CustomerIdOld,
+                DisputeReferenceNumber = m.DisputeReferenceNumber,
+                DisputeAmount = m.DisputeAmount,
+                DateDisputeFiled = m.DateDisputeFiled,
+                DescriptionOfDispute = m.DescriptionOfDispute,
+                AccountsPaymentDate = m.AccountsPaymentDate,
+                AccountsPaymentTransNo = m.AccountsPaymentTransNo,
+                AccountsPaymentAmount = m.AccountsPaymentAmount,
+                ReasonId = m.ReasonId,
+                Descriptions = m.Descriptions
+            }).AsQueryable();
 
             var totalItemCount = query.Count();
             var totalPages = (int)Math.Ceiling((double)totalItemCount / adjustmentParams.PageSize);
 
-            var customerCodesList =  query
+            var customerCodesList = query
                 .Skip((adjustmentParams.PageNumber - 1) * adjustmentParams.PageSize)
                 .Take(adjustmentParams.PageSize)
                 .OrderBy(x => x.Id)
@@ -105,7 +105,7 @@ namespace CSI.Application.Services
 
         public async Task<AnalyticsProoflist> CreateAnalyticsProofList(AnalyticsProoflistDto adjustmentTypeDto)
         {
-            var analyticsProoflist = new AnalyticsProoflist();     
+            var analyticsProoflist = new AnalyticsProoflist();
             var adjustmentId = await CreateAdjustment(adjustmentTypeDto.AdjustmentAddDto);
 
             if (adjustmentId != 0)
@@ -194,7 +194,7 @@ namespace CSI.Application.Services
                        .Where(x => x.Id == adjustmentTypeDto.AnalyticsId)
                        .FirstOrDefaultAsync();
 
-                  
+
                     if (matchRow != null)
                     {
                         oldJO = matchRow.OrderNo;
@@ -393,7 +393,6 @@ namespace CSI.Application.Services
 
                     if (adjustmentStatus != null)
                     {
-                        adjustmentStatus.StatusId = adjustmentTypeDto.StatusId ?? 0;
                         adjustmentStatus.ActionId = adjustmentTypeDto.ActionId ?? 0;
                         await _dbContext.SaveChangesAsync();
                     }
@@ -408,6 +407,35 @@ namespace CSI.Application.Services
                         adjustments.CustomerId = adjustmentTypeDto?.AdjustmentAddDto?.CustomerId;
                         await _dbContext.SaveChangesAsync();
                         result = true;
+                    }
+
+                    if (adjustmentTypeDto.refreshAnalyticsDto != null)
+                    {
+                        var analyticsParams = new RefreshAnalyticsDto
+                        {
+                            dates = adjustmentTypeDto.refreshAnalyticsDto.dates.Select(date => date).ToList(),
+                            memCode = new List<string> { adjustmentTypeDto?.AdjustmentAddDto?.CustomerId },
+                            userId = adjustmentTypeDto.refreshAnalyticsDto.userId,
+                            storeId = adjustmentTypeDto.refreshAnalyticsDto.storeId
+                        };
+
+                        var MatchDto = await GetMatchAnalyticsAndProofList(analyticsParams);
+
+                        var GetMatch = MatchDto
+                            .Where(x => x.AnalyticsId != null)
+                            .ToList();
+
+                        var CheckIsNull = GetMatch.Where(x => x.ProofListId == null && x.AnalyticsOrderNo.Contains(adjustmentTypeDto?.AdjustmentAddDto?.NewJO)).Any();
+
+                        adjustmentStatus = await _dbContext.AnalyticsProoflist
+                            .Where(x => x.Id == adjustmentTypeDto.Id)
+                            .FirstOrDefaultAsync();
+
+                        if (adjustmentStatus != null)
+                        {
+                            adjustmentStatus.StatusId = CheckIsNull ? 5 : adjustmentTypeDto.StatusId ?? 5;
+                            await _dbContext.SaveChangesAsync();
+                        }
                     }
                 }
                 return result;
