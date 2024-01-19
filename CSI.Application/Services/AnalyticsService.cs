@@ -417,12 +417,12 @@ namespace CSI.Application.Services
             {
                 var analyticsToDelete = _dbContext.Analytics
                    .Where(a => a.TransactionDate == date &&
-                               a.CustomerId == analyticsParam.memCode[0] &&
+                               a.CustomerId.Contains(memCodeLast6Digits[0])  &&
                                a.LocationId == analyticsParam.storeId[0]);
 
                 var portalToDelete = _dbContext.Prooflist
                  .Where(a => a.TransactionDate == date &&
-                             a.CustomerId == analyticsParam.memCode[0] &&
+                             a.CustomerId.Contains(memCodeLast6Digits[0]) &&
                              a.StoreId == analyticsParam.storeId[0]);
 
                 var analyticsIdList = await analyticsToDelete.Select(n => n.Id).ToListAsync();
@@ -825,6 +825,13 @@ namespace CSI.Application.Services
         {
             var isPending = true;
             var result = await ReturnAnalytics(analyticsParamsDto);
+
+            var CheckIfUpload = result.Where(x => x.IsUpload == true).Any();
+
+            if (!CheckIfUpload)
+            {
+                return false;
+            }
 
             foreach (var analytics in result)
             {
