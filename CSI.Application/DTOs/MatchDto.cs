@@ -19,5 +19,6 @@ namespace CSI.Application.DTOs
         public string? ProofListOrderNo { get; set; } = string.Empty;
         public decimal? ProofListAmount { get; set; }
         public decimal? Variance { get; set; }
+        public bool? IsUpload { get; set; }
     }
 }

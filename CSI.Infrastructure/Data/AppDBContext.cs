@@ -1,4 +1,5 @@
-﻿using CSI.Domain.Entities;
+﻿using CSI.Application.DTOs;
+using CSI.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System;
@@ -29,6 +30,8 @@ namespace CSI.Infrastructure.Data
             Match = Set<Match>();
             Roles = Set<Roles>();
             AnalyticsView = Set<AnalyticsView>();
+            Source = Set<Source>();
+            AdjustmentExceptions = Set<AdjustmentExceptions>();
         }
 
         public DbSet<User> Users { get; set; }
@@ -46,6 +49,8 @@ namespace CSI.Infrastructure.Data
         public DbSet<Match> Match { get; set; }
         public DbSet<Roles> Roles { get; set; }
         public DbSet<AnalyticsView> AnalyticsView { get; set; }
+        public DbSet<Source> Source { get; set; }
+        public DbSet<AdjustmentExceptions> AdjustmentExceptions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -91,8 +96,14 @@ namespace CSI.Infrastructure.Data
             modelBuilder.Entity<AnalyticsView>()
             .HasNoKey();
 
+            modelBuilder.Entity<AdjustmentExceptions>()
+            .HasNoKey();
+
             modelBuilder.Entity<Roles>()
             .ToTable("tbl_role");
+
+            modelBuilder.Entity<Source>()
+            .ToTable("tbl_source");
         }
     }
 }

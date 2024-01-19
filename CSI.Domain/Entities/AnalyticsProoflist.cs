@@ -15,6 +15,7 @@ namespace CSI.Domain.Entities
         public int ActionId  { get; set; }
         public int StatusId { get; set; } 
         public int AdjustmentId { get; set; }
+        public int SourceId { get; set; }
         public bool DeleteFlag { get; set; }
     }
 }
