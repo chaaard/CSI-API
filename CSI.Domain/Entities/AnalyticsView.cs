@@ -23,5 +23,6 @@ namespace CSI.Domain.Entities
         public decimal SubTotal { get; set; }
         public int StatusId { get; set; }
         public int? DeleteFlag { get; set; }
+        public int? IsUpload { get; set; }
     }
 }
