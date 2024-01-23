@@ -124,6 +124,7 @@ namespace CSI.Application.Services
                             $"     MAX(a.Amount) AS Amount, " +
                             $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
                             $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
+                            $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
                             $"     ABS(a.SubTotal) AS SubTotal  " +
                             $" FROM ( " +
                             $"     SELECT   " +
@@ -142,6 +143,7 @@ namespace CSI.Application.Services
                             $"         n.SubTotal, " +
                             $"         n.StatusId, " +
                             $"         n.DeleteFlag,   " +
+                            $"         n.IsUpload,   " +
                             $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
                             $"     FROM tbl_analytics n " +
                             $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
@@ -172,6 +174,7 @@ namespace CSI.Application.Services
                 Amount = n.Amount,
                 SubTotal = n.SubTotal,
                 StatusId = n.StatusId,
+                IsUpload = Convert.ToBoolean(n.IsUpload),
                 DeleteFlag = Convert.ToBoolean(n.DeleteFlag),
             }).ToList();
 
@@ -182,72 +185,79 @@ namespace CSI.Application.Services
         private async Task<List<AnalyticsDto>> ReturnAnalyticsSubmit(RefreshAnalyticsDto refreshAnalyticsDto)
         {
             List<string> memCodeLast6Digits = refreshAnalyticsDto.memCode.Select(code => code.Substring(Math.Max(0, code.Length - 6))).ToList();
-            var result = await _dbContext.AnalyticsView
-                   .FromSqlRaw($" SELECT  " +
-                            $"     MAX(a.Id) AS Id, " +
-                            $"     MAX(a.CustomerId) AS CustomerId, " +
-                            $"     MAX(a.LocationId) AS LocationId, " +
-                            $"     MAX(a.LocationName) AS LocationName, " +
-                            $"     MAX(a.TransactionDate) AS TransactionDate, " +
-                            $"     MAX(a.MembershipNo) AS MembershipNo, " +
-                            $"     MAX(a.CashierNo) AS CashierNo, " +
-                            $"     MAX(a.RegisterNo) AS RegisterNo, " +
-                            $"     MAX(a.TransactionNo) AS TransactionNo, " +
-                            $"     a.OrderNo, " +
-                            $"     MAX(a.Qty) AS Qty, " +
-                            $"     MAX(a.Amount) AS Amount, " +
-                            $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
-                            $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
-                            $"     ABS(a.SubTotal) AS SubTotal  " +
-                            $" FROM ( " +
-                            $"     SELECT   " +
-                            $"         n.Id, " +
-                            $"         n.CustomerId,  " +
-                            $"         n.LocationId,  " +
-                            $"         l.LocationName,  " +
-                            $"         n.TransactionDate,   " +
-                            $"         n.MembershipNo,   " +
-                            $"         n.CashierNo,  " +
-                            $"         n.RegisterNo,  " +
-                            $"         n.TransactionNo,  " +
-                            $"         n.OrderNo,  " +
-                            $"         n.Qty,  " +
-                            $"         n.Amount,  " +
-                            $"         n.SubTotal, " +
-                            $"         n.StatusId, " +
-                            $"         n.DeleteFlag,   " +
-                            $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
-                            $"     FROM tbl_analytics n " +
-                            $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
-                            $" ) a " +
-                            $" WHERE  " +
-                            $"     (CAST(a.TransactionDate AS DATE) = '{refreshAnalyticsDto.dates[0].ToString()}' AND a.LocationId = {refreshAnalyticsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
-                            $" GROUP BY  " +
-                            $"     a.OrderNo,    " +
-                            $"     ABS(a.SubTotal),  " +
-                            $"     a.row_num " +
-                            $" HAVING " +
-                            $"     COUNT(a.OrderNo) = 1 "
-                            )
-                   .ToListAsync();
-
-            var analytics = result.Select(n => new AnalyticsDto
+            DateTime date;
+            var analytics = new List<AnalyticsDto>();
+            if (DateTime.TryParse(refreshAnalyticsDto.dates[0].ToString(), out date))
             {
-                Id = n.Id,
-                CustomerId = n.CustomerId,
-                LocationName = n.LocationName,
-                TransactionDate = n.TransactionDate,
-                MembershipNo = n.MembershipNo,
-                CashierNo = n.CashierNo,
-                RegisterNo = n.RegisterNo,
-                TransactionNo = n.TransactionNo,
-                OrderNo = n.OrderNo,
-                Qty = n.Qty,
-                Amount = n.Amount,
-                SubTotal = n.SubTotal,
-                StatusId = n.StatusId,
-                DeleteFlag = Convert.ToBoolean(n.DeleteFlag),
-            }).ToList();
+                var result = await _dbContext.AnalyticsView
+                .FromSqlRaw($" SELECT  " +
+                         $"     MAX(a.Id) AS Id, " +
+                         $"     MAX(a.CustomerId) AS CustomerId, " +
+                         $"     MAX(a.LocationId) AS LocationId, " +
+                         $"     MAX(a.LocationName) AS LocationName, " +
+                         $"     MAX(a.TransactionDate) AS TransactionDate, " +
+                         $"     MAX(a.MembershipNo) AS MembershipNo, " +
+                         $"     MAX(a.CashierNo) AS CashierNo, " +
+                         $"     MAX(a.RegisterNo) AS RegisterNo, " +
+                         $"     MAX(a.TransactionNo) AS TransactionNo, " +
+                         $"     a.OrderNo, " +
+                         $"     MAX(a.Qty) AS Qty, " +
+                         $"     MAX(a.Amount) AS Amount, " +
+                         $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
+                         $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
+                         $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
+                         $"     ABS(a.SubTotal) AS SubTotal  " +
+                         $" FROM ( " +
+                         $"     SELECT   " +
+                         $"         n.Id, " +
+                         $"         n.CustomerId,  " +
+                         $"         n.LocationId,  " +
+                         $"         l.LocationName,  " +
+                         $"         n.TransactionDate,   " +
+                         $"         n.MembershipNo,   " +
+                         $"         n.CashierNo,  " +
+                         $"         n.RegisterNo,  " +
+                         $"         n.TransactionNo,  " +
+                         $"         n.OrderNo,  " +
+                         $"         n.Qty,  " +
+                         $"         n.Amount,  " +
+                         $"         n.SubTotal, " +
+                         $"         n.StatusId, " +
+                         $"         n.DeleteFlag,   " +
+                         $"         n.IsUpload,   " +
+                         $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
+                         $"     FROM tbl_analytics n " +
+                         $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
+                         $" ) a " +
+                         $" WHERE  " +
+                         $"     (CAST(a.TransactionDate AS DATE) = '{date}' AND a.LocationId = {refreshAnalyticsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                         $" GROUP BY  " +
+                         $"     a.OrderNo,    " +
+                         $"     ABS(a.SubTotal),  " +
+                         $"     a.row_num " +
+                         $" HAVING " +
+                         $"     COUNT(a.OrderNo) = 1 "
+                         )
+                .ToListAsync();
+                analytics = result.Select(n => new AnalyticsDto
+                {
+                    Id = n.Id,
+                    CustomerId = n.CustomerId,
+                    LocationName = n.LocationName,
+                    TransactionDate = n.TransactionDate,
+                    MembershipNo = n.MembershipNo,
+                    CashierNo = n.CashierNo,
+                    RegisterNo = n.RegisterNo,
+                    TransactionNo = n.TransactionNo,
+                    OrderNo = n.OrderNo,
+                    Qty = n.Qty,
+                    Amount = n.Amount,
+                    SubTotal = n.SubTotal,
+                    StatusId = n.StatusId,
+                    IsUpload = Convert.ToBoolean(n.IsUpload),
+                    DeleteFlag = Convert.ToBoolean(n.DeleteFlag),
+                }).ToList();
+            }
 
             return analytics;
         }
@@ -271,100 +281,105 @@ namespace CSI.Application.Services
             try
             {
                 List<string> memCodeLast6Digits = analyticsParamsDto.memCode.Select(code => code.Substring(Math.Max(0, code.Length - 6))).ToList();
-                var result = await _dbContext.Match
-                    .FromSqlRaw($"WITH RankedData AS ( " +
-                                $"SELECT  " +
-                                $"     MAX(a.Id) AS Id, " +
-                                $"     MAX(a.LocationName) AS LocationName, " +
-                                $"     MAX(a.CustomerName) AS CustomerName, " +
-                                $"     MAX(a.TransactionDate) AS TransactionDate, " +
-                                $"     a.OrderNo, " +
-                                $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                                $"     ABS(a.SubTotal) AS SubTotal  " +
-                                $" FROM ( " +
-                                $"     SELECT   " +
-                                $"        n.[Id], " +
-                                $"        n.LocationId, " +
-                                $"        n.CustomerId, " +
-                                $"        c.CustomerName, " +
-                                $"        l.LocationName, " +
-                                $"        n.[TransactionDate], " +
-                                $"        n.[OrderNo], " +
-                                $"        n.[SubTotal], " +
-                                $"        n.[IsUpload],   " +
-                                $"        ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
-                                $"     FROM tbl_analytics n " +
-                                $"        LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = n.LocationId " +
-                                $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
-                                $" ) a " +
-                                $" WHERE  " +
-                                $"      (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
-                                $" GROUP BY  " +
-                                $"     a.OrderNo,    " +
-                                $"     ABS(a.SubTotal),  " +
-                                $"     a.row_num " +
-                                $" HAVING " +
-                                $"     COUNT(a.OrderNo) = 1 " +
-                                $"), " +
-                                $"FilteredData AS ( " +
-                                $"SELECT " +
-                                $"    Id, " +
-                                $"    CustomerName, " +
-                                $"    LocationName, " +
-                                $"    [TransactionDate], " +
-                                $"    [OrderNo], " +
-                                $"    [SubTotal], " +
-                                $"    [IsUpload] " +
-                                $"FROM RankedData " +
-                                $") " +
-                                $"SELECT " +
-                                $"a.[Id] AS [AnalyticsId], " +
-                                $"a.CustomerName AS [AnalyticsPartner], " +
-                                $"a.LocationName AS [AnalyticsLocation], " +
-                                $"a.[TransactionDate] AS [AnalyticsTransactionDate], " +
-                                $"a.[OrderNo] AS [AnalyticsOrderNo], " +
-                                $"a.[SubTotal] AS [AnalyticsAmount], " +
-                                $"p.[Id] AS [ProofListId], " +
-                                $"p.[TransactionDate] AS [ProofListTransactionDate], " +
-                                $"p.[OrderNo] AS [ProofListOrderNo], " +
-                                $"p.[Amount] AS [ProofListAmount],  " +
-                                $"a.[IsUpload] AS [IsUpload] " +
-                            $"FROM  " +
-                                $"FilteredData a  " +
-                            $"FULL OUTER JOIN  " +
-                                $"(  " +
-                                    $"SELECT  " +
-                                        $"p.[Id], " +
-                                        $"c.CustomerName, " +
-                                        $"l.LocationName,  " +
-                                        $"p.[TransactionDate],  " +
-                                        $"p.[OrderNo], " +
-                                        $"p.[Amount]  " +
-                                   $" FROM " +
-                                   $"     [dbo].[tbl_prooflist] p  " +
-                                   $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
-                                   $"     LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId  " +
-                                   $" WHERE " +
-                                   $"     (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4)  " +
-                                $") p " +
-                            $"ON a.[OrderNo] = p.[OrderNo]" +
-                            $"ORDER BY COALESCE(p.Id, a.Id) DESC; ")
-                    .ToListAsync();
-
-                var matchDtos = result.Select(m => new MatchDto
+                DateTime date;
+                var matchDtos = new List<MatchDto>();
+                if (DateTime.TryParse(analyticsParamsDto.dates[0], out date))
                 {
-                    AnalyticsId = m.AnalyticsId,
-                    AnalyticsPartner = m.AnalyticsPartner,
-                    AnalyticsLocation = m.AnalyticsLocation,
-                    AnalyticsTransactionDate = m.AnalyticsTransactionDate,
-                    AnalyticsOrderNo = m.AnalyticsOrderNo,
-                    AnalyticsAmount = m.AnalyticsAmount,
-                    ProofListId = m.ProofListId,
-                    ProofListTransactionDate = m.ProofListTransactionDate,
-                    ProofListOrderNo = m.ProofListOrderNo,
-                    ProofListAmount = m.ProofListAmount,
-                    Variance = (m.AnalyticsAmount == null) ? m.ProofListAmount : (m.ProofListAmount == null) ? m.AnalyticsAmount :  m.AnalyticsAmount - m.ProofListAmount.Value,
-                }).ToList();
+                    var result = await _dbContext.Match
+                   .FromSqlRaw($"WITH RankedData AS ( " +
+                               $"SELECT  " +
+                               $"     MAX(a.Id) AS Id, " +
+                               $"     MAX(a.LocationName) AS LocationName, " +
+                               $"     MAX(a.CustomerName) AS CustomerName, " +
+                               $"     MAX(a.TransactionDate) AS TransactionDate, " +
+                               $"     a.OrderNo, " +
+                               $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
+                               $"     ABS(a.SubTotal) AS SubTotal  " +
+                               $" FROM ( " +
+                               $"     SELECT   " +
+                               $"        n.[Id], " +
+                               $"        n.LocationId, " +
+                               $"        n.CustomerId, " +
+                               $"        c.CustomerName, " +
+                               $"        l.LocationName, " +
+                               $"        n.[TransactionDate], " +
+                               $"        n.[OrderNo], " +
+                               $"        n.[SubTotal], " +
+                               $"        n.[IsUpload],   " +
+                               $"        ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
+                               $"     FROM tbl_analytics n " +
+                               $"        LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = n.LocationId " +
+                               $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
+                               $" ) a " +
+                               $" WHERE  " +
+                               $"      (CAST(a.TransactionDate AS DATE) = '{date}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                               $" GROUP BY  " +
+                               $"     a.OrderNo,    " +
+                               $"     ABS(a.SubTotal),  " +
+                               $"     a.row_num " +
+                               $" HAVING " +
+                               $"     COUNT(a.OrderNo) = 1 " +
+                               $"), " +
+                               $"FilteredData AS ( " +
+                               $"SELECT " +
+                               $"    Id, " +
+                               $"    CustomerName, " +
+                               $"    LocationName, " +
+                               $"    [TransactionDate], " +
+                               $"    [OrderNo], " +
+                               $"    [SubTotal], " +
+                               $"    [IsUpload] " +
+                               $"FROM RankedData " +
+                               $") " +
+                               $"SELECT " +
+                               $"a.[Id] AS [AnalyticsId], " +
+                               $"a.CustomerName AS [AnalyticsPartner], " +
+                               $"a.LocationName AS [AnalyticsLocation], " +
+                               $"a.[TransactionDate] AS [AnalyticsTransactionDate], " +
+                               $"a.[OrderNo] AS [AnalyticsOrderNo], " +
+                               $"a.[SubTotal] AS [AnalyticsAmount], " +
+                               $"p.[Id] AS [ProofListId], " +
+                               $"p.[TransactionDate] AS [ProofListTransactionDate], " +
+                               $"p.[OrderNo] AS [ProofListOrderNo], " +
+                               $"p.[Amount] AS [ProofListAmount],  " +
+                               $"a.[IsUpload] AS [IsUpload] " +
+                           $"FROM  " +
+                               $"FilteredData a  " +
+                           $"FULL OUTER JOIN  " +
+                               $"(  " +
+                                   $"SELECT  " +
+                                       $"p.[Id], " +
+                                       $"c.CustomerName, " +
+                                       $"l.LocationName,  " +
+                                       $"p.[TransactionDate],  " +
+                                       $"p.[OrderNo], " +
+                                       $"p.[Amount]  " +
+                                  $" FROM " +
+                                  $"     [dbo].[tbl_prooflist] p  " +
+                                  $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
+                                  $"     LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId  " +
+                                  $" WHERE " +
+                                  $"     (CAST(p.TransactionDate AS DATE) = '{date}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4)  " +
+                               $") p " +
+                           $"ON a.[OrderNo] = p.[OrderNo]" +
+                           $"ORDER BY COALESCE(p.Id, a.Id) DESC; ")
+                   .ToListAsync();
+
+                    matchDtos = result.Select(m => new MatchDto
+                    {
+                        AnalyticsId = m.AnalyticsId,
+                        AnalyticsPartner = m.AnalyticsPartner,
+                        AnalyticsLocation = m.AnalyticsLocation,
+                        AnalyticsTransactionDate = m.AnalyticsTransactionDate,
+                        AnalyticsOrderNo = m.AnalyticsOrderNo,
+                        AnalyticsAmount = m.AnalyticsAmount,
+                        ProofListId = m.ProofListId,
+                        ProofListTransactionDate = m.ProofListTransactionDate,
+                        ProofListOrderNo = m.ProofListOrderNo,
+                        ProofListAmount = m.ProofListAmount,
+                        Variance = (m.AnalyticsAmount == null) ? m.ProofListAmount : (m.ProofListAmount == null) ? m.AnalyticsAmount : m.AnalyticsAmount - m.ProofListAmount.Value,
+                    }).ToList();
+                }
 
                 return matchDtos;
             }
@@ -430,40 +445,40 @@ namespace CSI.Application.Services
                 var portalIdList = await portalToDelete.Select(n => n.Id).ToListAsync();
 
                 _dbContext.Analytics.RemoveRange(analyticsToDelete);
-                await _dbContext.SaveChangesAsync();
+                _dbContext.SaveChanges();
 
-                var adjustmentAnalyticsToDelete = await _dbContext.AnalyticsProoflist
+                var adjustmentAnalyticsToDelete =  _dbContext.AnalyticsProoflist
                     .Where(x => analyticsIdList.Contains(x.AnalyticsId))
-                    .ToListAsync();
+                    .ToList();
 
                 var adjustmentIdList = adjustmentAnalyticsToDelete.Select(n => n.AdjustmentId).ToList();
                 
                 _dbContext.AnalyticsProoflist.RemoveRange(adjustmentAnalyticsToDelete);
-                await _dbContext.SaveChangesAsync();
+                _dbContext.SaveChanges();
 
-                var adjustmentToDelete = await _dbContext.Adjustments
+                var adjustmentToDelete = _dbContext.Adjustments
                    .Where(x => adjustmentIdList.Contains(x.Id))
-                   .ToListAsync();
+                   .ToList();
 
                 _dbContext.Adjustments.RemoveRange(adjustmentToDelete);
-                await _dbContext.SaveChangesAsync();
+                _dbContext.SaveChanges();
 
-                var adjustmentProoflistToDelete = await _dbContext.AnalyticsProoflist
+                var adjustmentProoflistToDelete = _dbContext.AnalyticsProoflist
                 .Where(x => portalIdList.Contains(x.ProoflistId))
-                .ToListAsync();
+                .ToList();
 
                 var adjustmentPortalIdList = adjustmentProoflistToDelete.Select(n => n.AdjustmentId).ToList();
 
                 _dbContext.AnalyticsProoflist.RemoveRange(adjustmentProoflistToDelete);
-                await _dbContext.SaveChangesAsync();
+                _dbContext.SaveChanges();
 
 
-                var adjustmentPortalToDelete = await _dbContext.Adjustments
+                var adjustmentPortalToDelete = _dbContext.Adjustments
                     .Where(x => adjustmentPortalIdList.Contains(x.Id))
-                    .ToListAsync();
+                    .ToList();
 
                 _dbContext.Adjustments.RemoveRange(adjustmentPortalToDelete);
-                await _dbContext.SaveChangesAsync();
+                _dbContext.SaveChanges();
             }
            
             try
@@ -680,8 +695,12 @@ namespace CSI.Application.Services
         {
             try
             {
+                DateTime date;
+                var matchDto = new List<MatchDto>();
                 List<string> memCodeLast6Digits = analyticsParamsDto.memCode.Select(code => code.Substring(Math.Max(0, code.Length - 6))).ToList();
-                var result = await _dbContext.Match
+                if (DateTime.TryParse(analyticsParamsDto.dates[0].ToString(), out date))
+                {
+                    var result = await _dbContext.Match
                      .FromSqlRaw($"WITH RankedData AS ( " +
                                 $"SELECT  " +
                                 $"     MAX(a.Id) AS Id, " +
@@ -708,7 +727,7 @@ namespace CSI.Application.Services
                                 $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
                                 $" ) a " +
                                 $" WHERE  " +
-                                $"      (CAST(a.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                                $"      (CAST(a.TransactionDate AS DATE) = '{date}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
                                 $" GROUP BY  " +
                                 $"     a.OrderNo,    " +
                                 $"     ABS(a.SubTotal),  " +
@@ -755,33 +774,35 @@ namespace CSI.Application.Services
                                    $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
                                    $"     LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId  " +
                                    $" WHERE " +
-                                   $"     (CAST(p.TransactionDate AS DATE) = '{analyticsParamsDto.dates[0].ToString()}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4)  " +
+                                   $"     (CAST(p.TransactionDate AS DATE) = '{date}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4)  " +
                                 $") p " +
                             $"ON a.[OrderNo] = p.[OrderNo]" +
                             $"ORDER BY COALESCE(p.Id, a.Id) DESC; ")
                     .ToListAsync();
 
-                var matchDtos = result.Select(m => new MatchDto
-                {
-                    AnalyticsId = m.AnalyticsId,
-                    AnalyticsPartner = m.AnalyticsPartner,
-                    AnalyticsLocation = m.AnalyticsLocation,
-                    AnalyticsTransactionDate = m.AnalyticsTransactionDate,
-                    AnalyticsOrderNo = m.AnalyticsOrderNo,
-                    AnalyticsAmount = m.AnalyticsAmount,
-                    ProofListId = m.ProofListId,
-                    ProofListTransactionDate = m.ProofListTransactionDate,
-                    ProofListOrderNo = m.ProofListOrderNo,
-                    ProofListAmount = m.ProofListAmount,
-                    Variance = (m.AnalyticsAmount == null) ? m.ProofListAmount : (m.ProofListAmount == null) ? m.AnalyticsAmount : m.AnalyticsAmount - m.ProofListAmount.Value,
-                    IsUpload = Convert.ToBoolean(m.IsUpload),
-                }).ToList();
+                    var matchDtos = result.Select(m => new MatchDto
+                    {
+                        AnalyticsId = m.AnalyticsId,
+                        AnalyticsPartner = m.AnalyticsPartner,
+                        AnalyticsLocation = m.AnalyticsLocation,
+                        AnalyticsTransactionDate = m.AnalyticsTransactionDate,
+                        AnalyticsOrderNo = m.AnalyticsOrderNo,
+                        AnalyticsAmount = m.AnalyticsAmount,
+                        ProofListId = m.ProofListId,
+                        ProofListTransactionDate = m.ProofListTransactionDate,
+                        ProofListOrderNo = m.ProofListOrderNo,
+                        ProofListAmount = m.ProofListAmount,
+                        Variance = (m.AnalyticsAmount == null) ? m.ProofListAmount : (m.ProofListAmount == null) ? m.AnalyticsAmount : m.AnalyticsAmount - m.ProofListAmount.Value,
+                        IsUpload = Convert.ToBoolean(m.IsUpload),
+                    }).ToList();
 
-                var updateMatchDto = matchDtos
-                    .Where(x => x.ProofListId == null || x.AnalyticsId == null || x.Variance <= -2 || x.Variance >= 2)
-                    .ToList();
+                    matchDto = matchDtos
+                        .Where(x => x.ProofListId == null || x.AnalyticsId == null || x.Variance <= -2 || x.Variance >= 2)
+                        .ToList();
+                }
+               
 
-                return updateMatchDto;
+                return matchDto;
             }
             catch (Exception ex)
             {
