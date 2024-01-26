@@ -145,5 +145,12 @@ namespace CSI.API.Controllers
             await _analyticsService.UpdateUploadStatus(analyticsParamsDto);
             return Ok();
         }
+
+        [HttpPost("GenerateWeeklyReport")]
+        public async Task<IActionResult> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var result = await _analyticsService.GenerateWeeklyReport(analyticsParamsDto);
+            return Ok(result);
+        }
     }
 }
