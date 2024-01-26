@@ -61,7 +61,8 @@ namespace CSI.Application.Services
                             $"	LEFT JOIN [dbo].[tbl_status] st ON st.Id = ap.StatusId " +
                             $"	LEFT JOIN [dbo].[tbl_source] so ON so.Id = ap.SourceId " +
                             $"	LEFT JOIN [dbo].[tbl_location] lo ON lo.LocationCode = p.StoreId " +
-                            $"WHERE p.TransactionDate = '{adjustmentParams.dates[0].ToString()}' AND p.StoreId = {adjustmentParams.storeId[0]} AND p.CustomerId = '{adjustmentParams.memCode[0]}'")
+                            $"WHERE p.TransactionDate = '{adjustmentParams.dates[0].ToString()}' AND p.StoreId = {adjustmentParams.storeId[0]} AND p.CustomerId = '{adjustmentParams.memCode[0]}' AND so.SourceType = 'Portal' " +
+                            $" ORDER BY so.SourceType, a.SubTotal ASC ")
                    .ToListAsync();
 
             query = result.Select(m => new AdjustmentDto
@@ -97,7 +98,7 @@ namespace CSI.Application.Services
             var customerCodesList = query
                 .Skip((adjustmentParams.PageNumber - 1) * adjustmentParams.PageSize)
                 .Take(adjustmentParams.PageSize)
-                .OrderBy(x => x.Id)
+                .OrderBy(x => x.Source).OrderBy(x => x.Amount)
                 .ToList();
 
             return (customerCodesList, totalPages);

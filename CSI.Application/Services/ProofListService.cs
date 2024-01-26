@@ -40,7 +40,8 @@ namespace CSI.Application.Services
             Dictionary<string, string> customers = new Dictionary<string, string>();
             customers.Add("GrabFood", "9999011929");
             customers.Add("GrabMart", "9999011955");
-            customers.Add("PickARoo", "9999011931");
+            customers.Add("PickARooMerch", "9999011931");
+            customers.Add("PickARooFS", "9999011935");
             customers.Add("FoodPanda", "9999011838");
             customers.Add("MetroMart", "9999011855'',''90999011855'',''900999011855");
 
@@ -81,7 +82,7 @@ namespace CSI.Application.Services
                                             }
                                         }
                                     }
-                                    else if (customerName == "PickARoo")
+                                    else if (customerName == "PickARooFS" || customerName == "PickARooMerch")
                                     {
                                         var pickARooProofList = ExtractPickARoo(worksheet, rowCount, row, customerName, club, selectedDate);
                                         if (pickARooProofList.Item1 == null)
@@ -173,9 +174,9 @@ namespace CSI.Application.Services
                                     }
                                 }
                             }
-                            else if (customerName == "PickARoo")
+                            else if (customerName == "PickARooFS" || customerName == "PickARooMerch")
                             {
-                                var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath, club, selectedDate);
+                                var pickARooProofList = ExtractCSVPickARoo(tempCsvFilePath, club, selectedDate, customerName);
                                 if (pickARooProofList.Item1 == null)
                                 {
                                     return (null, pickARooProofList.Item2);
@@ -240,6 +241,7 @@ namespace CSI.Application.Services
 
                 if (DataExistsInDatabase(proofList))
                 {
+
                     customers.TryGetValue(customerName, out string value);
                     var convertDate = GetDateTime(selectedDate);
                     DeleteRecords(club, convertDate, value);
@@ -445,7 +447,7 @@ namespace CSI.Application.Services
                         {
                             var prooflist = new Prooflist
                             {
-                                CustomerId = "9999011931",
+                                CustomerId = customerName == "PickARooMerch" ? "9999011931" : "9999011935",
                                 TransactionDate = transactionDate,
                                 OrderNo = worksheet.Cells[row, columnIndexes["order number"]].Value?.ToString(),
                                 NonMembershipFee = (decimal?)0.00,
@@ -542,7 +544,7 @@ namespace CSI.Application.Services
                                     NonMembershipFee = (decimal?)0.00,
                                     PurchasedAmount = (decimal?)0.00,
                                     Amount = worksheet.Cells[row, columnIndexes["subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["subtotal"]].Value?.ToString()) : null,
-                                    StatusId = worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Delivered" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Transferred" ? 3 : worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Cancelled" ? 4 : null,
+                                    StatusId = worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Delivered" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Transferred" ? 3 : worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Cancelled" && worksheet.Cells[row, columnIndexes["is payable"]].Value.ToString() == "yes" ? 3 : null,
                                     StoreId = club,
                                     DeleteFlag = false,
                                 };
@@ -811,7 +813,7 @@ namespace CSI.Application.Services
             }
         }
 
-        private (List<Prooflist>, string?) ExtractCSVPickARoo(string filePath, int club, string selectedDate)
+        private (List<Prooflist>, string?) ExtractCSVPickARoo(string filePath, int club, string selectedDate, string customerName)
         {
             int row = 2;
             int rowCount = 0;
@@ -865,7 +867,7 @@ namespace CSI.Application.Services
                         {
                             var pickARoo = new Prooflist
                             {
-                                CustomerId =  "9999011931",
+                                CustomerId = customerName == "PickARooMerch" ? "9999011931" : "9999011935",
                                 TransactionDate = fields[columnIndexes["order date"]].ToString() != "" ? GetDateTime(fields[columnIndexes["order date"]]) : null,
                                 OrderNo = fields[columnIndexes["order number"]], 
                                 NonMembershipFee = (decimal?)0.00,
@@ -938,14 +940,20 @@ namespace CSI.Application.Services
                         string[] fields = parser.ReadFields();
                         var chktransactionDate = new DateTime();
                         var transactionDate = new DateTime?();
-                        var status = fields[columnIndexes["order status"]];
-                        var isPayable = fields[columnIndexes["is payable"]];
+                        var status = fields[columnIndexes["order status"]].ToLower();
+                        var isPayable = fields[columnIndexes["is payable"]].ToLower();
 
-                        if (status == "Cancelled" && isPayable == "Yes")
+                        var test = fields[columnIndexes["order id"]];
+                        if (test == "q9ao-fslv")
+                        {
+                            test = "";
+                        }
+
+                        if (status == "cancelled" && isPayable == "yes")
                         {
                             transactionDate = GetDateTime(fields[columnIndexes["cancelled at"]]);
                         }
-                        else if (status == "Delivered")
+                        else if (status == "delivered")
                         {
                             transactionDate = GetDateTime(fields[columnIndexes["delivered at"]]);
                         }
@@ -959,30 +967,33 @@ namespace CSI.Application.Services
                             chktransactionDate = transactionDate.Value.Date;
                         }
 
-                        if (transactionDate != null)
+                        var convertDate = GetDateTime(selectedDate);
+                        if (convertDate == chktransactionDate)
                         {
-                            var cnvrtDate = GetDateTime(selectedDate);
-                            if (cnvrtDate == chktransactionDate)
+                            if (transactionDate != null)
                             {
-                                var foodPanda = new Prooflist
+                                if (convertDate == chktransactionDate)
                                 {
-                                    CustomerId = "9999011838",
-                                    TransactionDate = transactionDate,
-                                    OrderNo = fields[columnIndexes["order id"]],
-                                    NonMembershipFee = (decimal?)0.00,
-                                    PurchasedAmount = (decimal?)0.00,
-                                    Amount = decimal.Parse(fields[columnIndexes["subtotal"]]),
-                                    StatusId = status == "Completed" || status == "Delivered" ? 3 : status == "Cancelled" ? 4 : null,
-                                    StoreId = club,
-                                    DeleteFlag = false,
-                                };
+                                    var foodPanda = new Prooflist
+                                    {
+                                        CustomerId = "9999011838",
+                                        TransactionDate = transactionDate,
+                                        OrderNo = fields[columnIndexes["order id"]],
+                                        NonMembershipFee = (decimal?)0.00,
+                                        PurchasedAmount = (decimal?)0.00,
+                                        Amount = decimal.Parse(fields[columnIndexes["subtotal"]]),
+                                        StatusId = status == "completed" || status == "delivered" ? 3 : status == "cancelled" && isPayable == "yes" ? 3 : null,
+                                        StoreId = club,
+                                        DeleteFlag = false,
+                                    };
 
-                                foodPandaProofLists.Add(foodPanda);
-                                rowCount++;
-                            }
-                            else
-                            {
-                                return (foodPandaProofLists, "Uploaded file transaction dates do not match.");
+                                    foodPandaProofLists.Add(foodPanda);
+                                    rowCount++;
+                                }
+                                else
+                                {
+                                    return (foodPandaProofLists, "Uploaded file transaction dates do not match.");
+                                }
                             }
                         }
                     }
