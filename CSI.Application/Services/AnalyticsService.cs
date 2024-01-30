@@ -910,6 +910,10 @@ namespace CSI.Application.Services
             var total = result.Sum(x => x.SubTotal);
             var locationList = await GetLocations();
 
+            var club = analyticsParamsDto.storeId[0];
+            var trxCount = result.Count();
+            var dateFormat = result.FirstOrDefault().TransactionDate?.ToString("MMddyy");
+
             isPending = result
                 .Where(x => x.StatusId == 5)
                 .Any();
@@ -920,42 +924,77 @@ namespace CSI.Application.Services
             }
             else
             {
-                //foreach (var item in result)
-                //{
-                    var getShortName = locationList
-                        .Where(x => x.LocationName.Contains(result.FirstOrDefault().LocationName))
-                        .Select(n => new
-                        {
-                            n.ShortName,
-                        })
-                        .FirstOrDefault();
-
-                    var invoice = new InvoiceDto
+                var getShortName = locationList
+                    .Where(x => x.LocationName.Contains(result.FirstOrDefault().LocationName))
+                    .Select(n => new
                     {
-                        HDR_TRX_NUMBER = "0000000" + "I",
-                        HDR_TRX_DATE = result.FirstOrDefault().TransactionDate,
-                        HDR_PAYMENT_TYPE = "HS",
-                        HDR_BRANCH_CODE = getShortName.ShortName ?? "",
-                        HDR_CUSTOMER_NUMBER = result.FirstOrDefault().CustomerId + " P",
-                        HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
-                        HDR_PAYMENT_TERM = "0",
-                        HDR_BUSINESS_LINE = "1",
-                        HDR_BATCH_SOURCE_NAME = "POS",
-                        HDR_GL_DATE = result.FirstOrDefault().TransactionDate,
-                        HDR_SOURCE_REFERENCE = "HS",
-                        DTL_LINE_DESC = "GEI225101523-15",
-                        DTL_QUANTITY = 1,
-                        DTL_AMOUNT = total,
-                        DTL_VAT_CODE = "",
-                        DTL_CURRENCY = "PHP",
-                        INVOICE_APPLIED = "0",
-                        FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
-                    };
+                        n.ShortName,
+                    })
+                    .FirstOrDefault();
+
+                var invoice = new InvoiceDto
+                {
+                    HDR_TRX_NUMBER = "0000000" + "I",
+                    HDR_TRX_DATE = result.FirstOrDefault().TransactionDate,
+                    HDR_PAYMENT_TYPE = "HS",
+                    HDR_BRANCH_CODE = getShortName.ShortName ?? "",
+                    HDR_CUSTOMER_NUMBER = result.FirstOrDefault().CustomerId + " P",
+                    HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
+                    HDR_PAYMENT_TERM = "0",
+                    HDR_BUSINESS_LINE = "1",
+                    HDR_BATCH_SOURCE_NAME = "POS",
+                    HDR_GL_DATE = result.FirstOrDefault().TransactionDate,
+                    HDR_SOURCE_REFERENCE = "HS",
+                    DTL_LINE_DESC = "GEI" + club + dateFormat + "-" + trxCount,
+                    DTL_QUANTITY = 1,
+                    DTL_AMOUNT = total,
+                    DTL_VAT_CODE = "",
+                    DTL_CURRENCY = "PHP",
+                    INVOICE_APPLIED = "0",
+                    FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
+                };
 
                 invoiceAnalytics.Add(invoice);
-                //}
+
+                var generateInvoice = new GenerateInvoiceDto
+                {
+                    Club = club,
+                    HDR_TRX_NUMBER = "0000000" + "I",
+                    HDR_TRX_DATE = result.FirstOrDefault().TransactionDate,
+                    HDR_PAYMENT_TYPE = "HS",
+                    HDR_BRANCH_CODE = getShortName.ShortName ?? "",
+                    HDR_CUSTOMER_NUMBER = result.FirstOrDefault().CustomerId + " P",
+                    HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
+                    HDR_PAYMENT_TERM = "0",
+                    HDR_BUSINESS_LINE = "1",
+                    HDR_BATCH_SOURCE_NAME = "POS",
+                    HDR_GL_DATE = result.FirstOrDefault().TransactionDate,
+                    HDR_SOURCE_REFERENCE = "HS",
+                    DTL_LINE_DESC = "GEI" + club + dateFormat + "-" + trxCount,
+                    DTL_QUANTITY = 1,
+                    DTL_AMOUNT = total,
+                    DTL_VAT_CODE = "",
+                    DTL_CURRENCY = "PHP",
+                    INVOICE_APPLIED = "0",
+                    FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
+
+                };
+
+                var genInvoice = _mapper.Map<GenerateInvoiceDto, GenerateInvoice>(generateInvoice);
+                _dbContext.GenerateInvoice.Add(genInvoice);
+                await _dbContext.SaveChangesAsync();
+
                 return (invoiceAnalytics, isPending);
             }
+        }
+
+        public async Task<List<GenerateInvoice>> GetGeneratedInvoice(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var generatedInvoice = new List<GenerateInvoice>();
+
+            
+
+            return generatedInvoice;
         }
 
         public async Task<bool> IsSubmitted(AnalyticsParamsDto analyticsParamsDto)
@@ -970,9 +1009,10 @@ namespace CSI.Application.Services
             return isSubmitted;
         }
 
-        public async Task<List<WeeklyReportDto>> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto)
+        public async Task<(List<WeeklyReportDto>, List<RecapSummaryDto>)> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto)
         {
             var weeklyReportList = new List<WeeklyReportDto>();
+            var recapList = new List<RecapSummaryDto>();
             DateTime dateFrom;
             DateTime dateTo;
             List<string> memCodeLast6Digits = analyticsParamsDto.memCode.Select(code => code.Substring(Math.Max(0, code.Length - 6))).ToList();
@@ -1039,14 +1079,36 @@ namespace CSI.Application.Services
                     TransactionNo = n.TransactionNo,
                     OrderNo = n.OrderNo,
                     Qty = n.Qty,
+                    Amount = n.Amount,
                     SubTotal = n.SubTotal,
+                    Member = null,
+                    NonMember = null,
                     OriginalAmout = n.SubTotal,
                     AccountsPayment = "",
                     APTRX = "",
                     TotalBilled = null
                 }).ToList();
+
+                if (result.Any())
+                {
+                    var summary = result
+                    .GroupBy(r => r.TransactionDate?.Date) // Use ?.Date to handle nullable DateTime?
+                    .Select(group => new RecapSummaryDto
+                    {
+                        DAYOFWEEK = group.Key?.ToString("ddd") ?? "N/A", // Handle null case
+                        DATE = group.Key.HasValue ? group.Key.Value.ToString("M/d/yyyy") : "N/A", // Handle null case directly
+                        SAAMOUNT = group.Sum(r => r.SubTotal),
+                        NOOFTRX = group.Count(),
+                        PERIINVOICEENTRY = group.Sum(r => r.SubTotal),
+                        VARIANCE = 0, // Calculate the variance as needed
+                        REMARKS = $"GEI{analyticsParamsDto.storeId[0]}{(group.Key?.ToString("MMddyy") ?? "N/A")}-{group.Count()}" // Use ?.ToString("MMdd") to handle nullable DateTime?
+                    })
+                    .ToList();
+
+                    recapList.AddRange(summary);
+                }
             }
-            return weeklyReportList;
+            return (weeklyReportList, recapList);
         }
     }
 }
