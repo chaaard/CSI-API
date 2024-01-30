@@ -18,6 +18,7 @@ namespace CSI.Application.Interfaces
         Task<(List<InvoiceDto>, bool)> GenerateInvoiceAnalytics(AnalyticsParamsDto analyticsParamsDto);
         Task<bool> IsSubmitted(AnalyticsParamsDto analyticsParamsDto);
         Task UpdateUploadStatus(AnalyticsParamsDto analyticsParamsDto);
-        Task<List<WeeklyReportDto>> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto);
+        Task<(List<WeeklyReportDto>, List<RecapSummaryDto>)> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto);
+        Task<List<Location>> GetLocations();
     }
 }

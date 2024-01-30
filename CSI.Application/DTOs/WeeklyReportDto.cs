@@ -15,7 +15,10 @@ namespace CSI.Application.DTOs
         public string? TransactionNo { get; set; } = string.Empty;
         public string? OrderNo { get; set; } = string.Empty;
         public int? Qty { get; set; }
+        public decimal? Amount { get; set; }
         public decimal? SubTotal { get; set; }
+        public decimal? Member { get; set; }
+        public decimal? NonMember { get; set; }
         public decimal? OriginalAmout { get; set; }
         public string? AccountsPayment { get; set; }
         public string? APTRX { get; set; }

@@ -150,7 +150,43 @@ namespace CSI.API.Controllers
         public async Task<IActionResult> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto)
         {
             var result = await _analyticsService.GenerateWeeklyReport(analyticsParamsDto);
+
+            if (result.Item1 != null)
+            {
+                var data = new
+                {
+                    WeeklyReport = result.Item1,
+                    RecapSummary = result.Item2
+                };
+
+                return (Ok(data));
+            }
+
             return Ok(result);
+        }
+
+        [HttpPost("GetLocations")]
+        public async Task<IActionResult> GetLocations()
+        {
+            var result = await _analyticsService.GetLocations();
+
+            var formatted = result
+                .Where(x => x.LocationName.ToLower().Contains("kareila"))
+                .Select(x =>
+                {
+                    // Replace "kareila" with a blank and trim the string
+                    x.LocationName = x.LocationName.Replace("KAREILA - ", "").Trim();
+                    return x;
+                })
+                .ToList();
+
+
+            if (formatted.Any())
+            {
+                return Ok(formatted);
+            }
+
+            return (NotFound());
         }
     }
 }
