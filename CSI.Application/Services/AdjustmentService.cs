@@ -245,6 +245,47 @@ namespace CSI.Application.Services
                             adjustmentStatus.StatusId = CheckIsNull ? 5 : adjustmentTypeDto.StatusId ?? 5;
                             await _dbContext.SaveChangesAsync();
                         }
+
+                        var GetNewException = MatchDto
+                            .Where(x => x.AnalyticsId != null && x.ProofListId != null && x.Variance > 0 && x.AnalyticsOrderNo.Contains(adjustmentTypeDto?.AdjustmentAddDto?.NewJO))
+                            .ToList();
+
+                        if (GetNewException != null)
+                        {
+                            foreach (var item in GetNewException)
+                            {
+                                var param = new AnalyticsProoflistDto
+                                {
+
+                                    Id = 0,
+                                    AnalyticsId = item.AnalyticsId,
+                                    ProoflistId = item.ProofListId,
+                                    ActionId = null,
+                                    StatusId = 5,
+                                    AdjustmentId = 0,
+                                    SourceId = (item.AnalyticsId != null && item.ProofListId != null ? 1 : item.AnalyticsId != null ? 1 : item.ProofListId != null ? 2 : 0),
+                                    DeleteFlag = false,
+                                    AdjustmentAddDto = new AdjustmentAddDto
+                                    {
+                                        Id = 0,
+                                        DisputeReferenceNumber = null,
+                                        DisputeAmount = null,
+                                        DateDisputeFiled = null,
+                                        DescriptionOfDispute = null,
+                                        NewJO = null,
+                                        CustomerId = null,
+                                        AccountsPaymentDate = null,
+                                        AccountsPaymentTransNo = null,
+                                        AccountsPaymentAmount = null,
+                                        ReasonId = null,
+                                        Descriptions = null,
+                                        DeleteFlag = null,
+                                    }
+                                };
+
+                                await CreateAnalyticsProofList(param);
+                            }
+                        }
                     }
                 }
                 return result;
