@@ -30,7 +30,7 @@ namespace CSI.Application.Services
 
         }
 
-        public (List<Prooflist>?, string?) ReadProofList(List<IFormFile> files, string customerName, string strClub, string selectedDate)
+        public async Task<(List<Prooflist>?, string?)> ReadProofList(List<IFormFile> files, string customerName, string strClub, string selectedDate)
         {
             int row = 2;
             int rowCount = 0;
@@ -44,6 +44,18 @@ namespace CSI.Application.Services
             customers.Add("PickARooFS", "9999011935");
             customers.Add("FoodPanda", "9999011838");
             customers.Add("MetroMart", "9999011855'',''90999011855'',''900999011855");
+
+            customers.TryGetValue(customerName, out string valueCust);
+            DateTime date;
+            if (DateTime.TryParse(selectedDate, out date))
+            {
+                var GetAnalytics = await _dbContext.Analytics.Where(x => x.CustomerId == valueCust && x.LocationId == club && x.TransactionDate == date).AnyAsync();
+                if (!GetAnalytics)
+                {
+                    return (proofList, "No analytics found.");
+                }
+            }
+               
 
             try
             {
