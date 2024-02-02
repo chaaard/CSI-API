@@ -38,18 +38,18 @@ namespace CSI.Application.Services
             var proofList = new List<Prooflist>();
 
             Dictionary<string, string> customers = new Dictionary<string, string>();
-            customers.Add("GrabFood", "9999011929");
-            customers.Add("GrabMart", "9999011955");
-            customers.Add("PickARooMerch", "9999011931");
-            customers.Add("PickARooFS", "9999011935");
-            customers.Add("FoodPanda", "9999011838");
-            customers.Add("MetroMart", "9999011855'',''90999011855'',''900999011855");
+            customers.Add("GrabFood", "011929");
+            customers.Add("GrabMart", "011955");
+            customers.Add("PickARooMerch", "011931");
+            customers.Add("PickARooFS", "011935");
+            customers.Add("FoodPanda", "011838");
+            customers.Add("MetroMart", "011855");
 
             customers.TryGetValue(customerName, out string valueCust);
             DateTime date;
             if (DateTime.TryParse(selectedDate, out date))
             {
-                var GetAnalytics = await _dbContext.Analytics.Where(x => x.CustomerId == valueCust && x.LocationId == club && x.TransactionDate == date).AnyAsync();
+                var GetAnalytics = await _dbContext.Analytics.Where(x => x.CustomerId.Contains(valueCust) && x.LocationId == club && x.TransactionDate == date).AnyAsync();
                 if (!GetAnalytics)
                 {
                     return (proofList, "No analytics found.");
@@ -280,7 +280,7 @@ namespace CSI.Application.Services
         private void DeleteRecords(int club, DateTime? selectedDate, string customerId)
         {
             var dataToDelete = _dbContext.Prooflist
-                .Where(x => x.CustomerId == customerId && x.TransactionDate == selectedDate && x.StoreId == club)
+                .Where(x => x.CustomerId.Contains(customerId) && x.TransactionDate == selectedDate && x.StoreId == club)
                 .ToList();
 
             if (dataToDelete != null)

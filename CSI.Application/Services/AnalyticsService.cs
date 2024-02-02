@@ -902,19 +902,60 @@ namespace CSI.Application.Services
             return isPending;
         }
 
+
         public async Task<(List<InvoiceDto>, bool)> GenerateInvoiceAnalytics(AnalyticsParamsDto analyticsParamsDto)
         {
             var invoiceAnalytics = new List<InvoiceDto>();
             var isPending = false;
+            DateTime currentDate = DateTime.Now;
+            Random random = new Random();
             var result = await ReturnAnalytics(analyticsParamsDto);
-            var total = result.Sum(x => x.SubTotal);
+            var transactionData = result
+            .Where(x => x.StatusId == 3)
+            .Select(n => new
+            {
+                n.TransactionDate,
+                n.SubTotal,
+                n.StatusId,
+                n.LocationName,
+                CustomerId = n.CustomerId.ToString().Replace("\\", ""),
+            })
+            .ToList();
+
+            var customerCodesData = _dbContext.CustomerCodes
+                .Where(y => y.CustomerCode.Contains(transactionData.FirstOrDefault().CustomerId.Substring(Math.Max(0, transactionData.FirstOrDefault().CustomerId.Length - 6))))
+                .Select(y => new
+                {
+                    y.CustomerNo,
+                    y.CustomerName,
+                    y.CustomerCode, // Assuming CustomerCode is the correct property
+                })
+                .ToList();
+
+            var formattedData = transactionData
+                .Join(customerCodesData,
+                    x => x.CustomerId,
+                    y => y.CustomerCode,
+                    (x, y) => new
+                    {
+                        x.TransactionDate,
+                        x.SubTotal,
+                        x.StatusId,
+                        x.LocationName,
+                        y.CustomerNo,
+                        y.CustomerName,
+                        x.CustomerId
+                    })
+                .ToList();
+
+            var total = formattedData.Sum(x => x.SubTotal);
             var locationList = await GetLocations();
 
             var club = analyticsParamsDto.storeId[0];
             var trxCount = result.Count();
-            var dateFormat = result.FirstOrDefault().TransactionDate?.ToString("MMddyy");
+            var dateFormat = formattedData.FirstOrDefault().TransactionDate?.ToString("MMddyy");
 
-            isPending = result
+            isPending = formattedData
                 .Where(x => x.StatusId == 5)
                 .Any();
 
@@ -924,8 +965,25 @@ namespace CSI.Application.Services
             }
             else
             {
+                var lastInvoice = await _dbContext.GenerateInvoice.OrderByDescending(i => i.Id).FirstOrDefaultAsync();
+                long startingInvoiceNumber = 000000000001;
+
+                if (lastInvoice != null)
+                {
+                    startingInvoiceNumber = Convert.ToInt64(lastInvoice.InvoiceNo) + 1;
+                }
+
+                long newInvoiceNumber = startingInvoiceNumber;
+
+                while (await _dbContext.GenerateInvoice.AnyAsync(i => i.InvoiceNo == newInvoiceNumber.ToString("000000000000")))
+                {
+                    newInvoiceNumber++;
+                }
+
+                var formattedInvoiceNumber = newInvoiceNumber.ToString("000000000000");
+
                 var getShortName = locationList
-                    .Where(x => x.LocationName.Contains(result.FirstOrDefault().LocationName))
+                    .Where(x => x.LocationName.Contains(formattedData.FirstOrDefault().LocationName))
                     .Select(n => new
                     {
                         n.ShortName,
@@ -934,16 +992,16 @@ namespace CSI.Application.Services
 
                 var invoice = new InvoiceDto
                 {
-                    HDR_TRX_NUMBER = "0000000" + "I",
-                    HDR_TRX_DATE = result.FirstOrDefault().TransactionDate,
+                    HDR_TRX_NUMBER = formattedInvoiceNumber,
+                    HDR_TRX_DATE = formattedData.FirstOrDefault().TransactionDate,
                     HDR_PAYMENT_TYPE = "HS",
                     HDR_BRANCH_CODE = getShortName.ShortName ?? "",
-                    HDR_CUSTOMER_NUMBER = result.FirstOrDefault().CustomerId + " P",
+                    HDR_CUSTOMER_NUMBER = formattedData.FirstOrDefault().CustomerNo,
                     HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
                     HDR_PAYMENT_TERM = "0",
                     HDR_BUSINESS_LINE = "1",
                     HDR_BATCH_SOURCE_NAME = "POS",
-                    HDR_GL_DATE = result.FirstOrDefault().TransactionDate,
+                    HDR_GL_DATE = formattedData.FirstOrDefault().TransactionDate,
                     HDR_SOURCE_REFERENCE = "HS",
                     DTL_LINE_DESC = "GEI" + club + dateFormat + "-" + trxCount,
                     DTL_QUANTITY = 1,
@@ -956,28 +1014,19 @@ namespace CSI.Application.Services
 
                 invoiceAnalytics.Add(invoice);
 
+
                 var generateInvoice = new GenerateInvoiceDto
                 {
                     Club = club,
-                    HDR_TRX_NUMBER = "0000000" + "I",
-                    HDR_TRX_DATE = result.FirstOrDefault().TransactionDate,
-                    HDR_PAYMENT_TYPE = "HS",
-                    HDR_BRANCH_CODE = getShortName.ShortName ?? "",
-                    HDR_CUSTOMER_NUMBER = result.FirstOrDefault().CustomerId + " P",
-                    HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
-                    HDR_PAYMENT_TERM = "0",
-                    HDR_BUSINESS_LINE = "1",
-                    HDR_BATCH_SOURCE_NAME = "POS",
-                    HDR_GL_DATE = result.FirstOrDefault().TransactionDate,
-                    HDR_SOURCE_REFERENCE = "HS",
-                    DTL_LINE_DESC = "GEI" + club + dateFormat + "-" + trxCount,
-                    DTL_QUANTITY = 1,
-                    DTL_AMOUNT = total,
-                    DTL_VAT_CODE = "",
-                    DTL_CURRENCY = "PHP",
-                    INVOICE_APPLIED = "0",
-                    FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
-
+                    CustomerCode = formattedData.FirstOrDefault().CustomerId,
+                    CustomerNo = formattedData.FirstOrDefault().CustomerNo,
+                    CustomerName = formattedData.FirstOrDefault().CustomerName,
+                    InvoiceNo = formattedInvoiceNumber,
+                    InvoiceDate = currentDate,
+                    TransactionDate = formattedData.FirstOrDefault().TransactionDate,
+                    Location = formattedData.FirstOrDefault().LocationName,
+                    ReferenceNo = "0",
+                    InvoiceAmount = total,
                 };
 
                 var genInvoice = _mapper.Map<GenerateInvoiceDto, GenerateInvoice>(generateInvoice);
@@ -991,8 +1040,22 @@ namespace CSI.Application.Services
         public async Task<List<GenerateInvoice>> GetGeneratedInvoice(AnalyticsParamsDto analyticsParamsDto)
         {
             var generatedInvoice = new List<GenerateInvoice>();
+            DateTime dateFrom;
+            DateTime dateTo;
+            List<string> memCodeLast6Digits = analyticsParamsDto.memCode.Select(code => code.Substring(Math.Max(0, code.Length - 6))).ToList();
+            if (DateTime.TryParse(analyticsParamsDto.dates[0].ToString(), out dateFrom) &&
+                DateTime.TryParse(analyticsParamsDto.dates[1].ToString(), out dateTo))
+            {
+                if (DateTime.TryParse(analyticsParamsDto.dates[0].ToString(), out dateFrom) &&
+                    DateTime.TryParse(analyticsParamsDto.dates[1].ToString(), out dateTo))
+                {
+                    var genInvoice = await _dbContext.GenerateInvoice
+                        .Where(x => x.TransactionDate > dateFrom && analyticsParamsDto.storeId.Contains(x.Club) && x.CustomerCode.Contains(memCodeLast6Digits[0]))
+                        .ToListAsync();
 
-            
+                    generatedInvoice.AddRange(genInvoice);
+                }
+            }
 
             return generatedInvoice;
         }
@@ -1007,6 +1070,22 @@ namespace CSI.Application.Services
                .Any();
 
             return isSubmitted;
+        }
+
+        public async Task<List<int>> GetClubs()
+        {
+            var clubs = new List<int>();
+            var result = await _dbContext.Locations
+                .Where(x => x.LocationName.Contains("KAREILA"))
+                .Select(n => new
+                {
+                    n.LocationCode
+                })
+                .ToListAsync();
+
+            clubs.AddRange(result.Select(x => x.LocationCode));
+
+            return clubs;
         }
 
         public async Task<(List<WeeklyReportDto>, List<RecapSummaryDto>)> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto)
