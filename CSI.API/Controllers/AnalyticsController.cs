@@ -188,5 +188,31 @@ namespace CSI.API.Controllers
 
             return (NotFound());
         }
+
+        [HttpPost("GetClubs")]
+        public async Task<IActionResult> GetClubs()
+        {
+            var result = await _analyticsService.GetClubs();
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("GetGeneratedInvoice")]
+        public async Task<IActionResult> GetGeneratedInvoice(AnalyticsParamsDto analyticsParamsDto)
+        {
+            var result = await _analyticsService.GetGeneratedInvoice(analyticsParamsDto);
+
+            if (result != null)
+            {
+                return (Ok(result));
+            }
+
+            return Ok(result);
+        }
     }
 }

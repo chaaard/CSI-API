@@ -20,5 +20,7 @@ namespace CSI.Application.Interfaces
         Task UpdateUploadStatus(AnalyticsParamsDto analyticsParamsDto);
         Task<(List<WeeklyReportDto>, List<RecapSummaryDto>)> GenerateWeeklyReport(AnalyticsParamsDto analyticsParamsDto);
         Task<List<Location>> GetLocations();
+        Task<List<GenerateInvoice>> GetGeneratedInvoice(AnalyticsParamsDto analyticsParamsDto);
+        Task<List<int>> GetClubs();
     }
 }
