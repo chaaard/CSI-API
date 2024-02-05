@@ -177,25 +177,24 @@ namespace CSI.Application.Services
                 }
                 else
                 {
-                    if (result.IsLogin)
-                    {
-                        result.IsLogin = false;
-                        _ = await _dbContext.SaveChangesAsync();
+                   
+                    result.IsLogin = false;
+                    _ = await _dbContext.SaveChangesAsync();
 
-                        return new UserDto
-                        {
-                            Id = result.Id,
-                            EmployeeNumber = result.EmployeeNumber,
-                            FirstName = result.FirstName,
-                            LastName = result.LastName,
-                            Username = result.Username,
-                            IsLogin = result.IsLogin,
-                            RoleId = result.RoleId,
-                            Club = result.Club,
-                            Token = "",
-                            Message = "Logout Successful"
-                        };
-                    }
+                    return new UserDto
+                    {
+                        Id = result.Id,
+                        EmployeeNumber = result.EmployeeNumber,
+                        FirstName = result.FirstName,
+                        LastName = result.LastName,
+                        Username = result.Username,
+                        IsLogin = result.IsLogin,
+                        RoleId = result.RoleId,
+                        Club = result.Club,
+                        Token = "",
+                        Message = "Logout Successful"
+                    };
+                   
                     return new UserDto();
                 }
             }
