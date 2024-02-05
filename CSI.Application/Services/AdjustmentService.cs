@@ -247,7 +247,7 @@ namespace CSI.Application.Services
                         }
 
                         var GetNewException = MatchDto
-                            .Where(x => x.AnalyticsId != null && x.ProofListId != null && x.Variance > 0 && x.AnalyticsOrderNo.Contains(adjustmentTypeDto?.AdjustmentAddDto?.NewJO))
+                            .Where(x => x.AnalyticsId != null && x.ProofListId != null && x.Variance > 0  && x.AnalyticsOrderNo.Contains(adjustmentTypeDto?.AdjustmentAddDto?.NewJO))
                             .ToList();
 
                         if (GetNewException != null)
