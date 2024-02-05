@@ -910,17 +910,19 @@ namespace CSI.Application.Services
             DateTime currentDate = DateTime.Now;
             Random random = new Random();
             var result = await ReturnAnalytics(analyticsParamsDto);
+            var merchRef = new Dictionary<string, string>();
+
             var transactionData = result
-            .Where(x => x.StatusId == 3)
-            .Select(n => new
-            {
-                n.TransactionDate,
-                n.SubTotal,
-                n.StatusId,
-                n.LocationName,
-                CustomerId = n.CustomerId.ToString().Replace("\\", ""),
-            })
-            .ToList();
+                .Where(x => x.StatusId == 3)
+                .Select(n => new
+                {
+                    n.TransactionDate,
+                    n.SubTotal,
+                    n.StatusId,
+                    n.LocationName,
+                    CustomerId = n.CustomerId.ToString().Replace("\\", ""),
+                })
+                .ToList();
 
             var customerCodesData = _dbContext.CustomerCodes
                 .Where(y => y.CustomerCode.Contains(transactionData.FirstOrDefault().CustomerId.Substring(Math.Max(0, transactionData.FirstOrDefault().CustomerId.Length - 6))))
@@ -990,6 +992,15 @@ namespace CSI.Application.Services
                     })
                     .FirstOrDefault();
 
+                var formatCustomerNo = formattedData.FirstOrDefault().CustomerNo.Replace("P", "").Trim();
+
+                var getReference = await _dbContext.Reference
+                    .Where(x => x.CustomerNo == formatCustomerNo)
+                    .Select(n => new {
+                        n.MerchReference,
+                    })
+                    .FirstOrDefaultAsync();
+
                 var invoice = new InvoiceDto
                 {
                     HDR_TRX_NUMBER = formattedInvoiceNumber,
@@ -1003,7 +1014,7 @@ namespace CSI.Application.Services
                     HDR_BATCH_SOURCE_NAME = "POS",
                     HDR_GL_DATE = formattedData.FirstOrDefault().TransactionDate,
                     HDR_SOURCE_REFERENCE = "HS",
-                    DTL_LINE_DESC = "GEI" + club + dateFormat + "-" + trxCount,
+                    DTL_LINE_DESC = getReference.MerchReference + club + dateFormat + "-" + trxCount,
                     DTL_QUANTITY = 1,
                     DTL_AMOUNT = total,
                     DTL_VAT_CODE = "",
@@ -1025,7 +1036,7 @@ namespace CSI.Application.Services
                     InvoiceDate = currentDate,
                     TransactionDate = formattedData.FirstOrDefault().TransactionDate,
                     Location = formattedData.FirstOrDefault().LocationName,
-                    ReferenceNo = "0",
+                    ReferenceNo = getReference.MerchReference + club + dateFormat,
                     InvoiceAmount = total,
                 };
 

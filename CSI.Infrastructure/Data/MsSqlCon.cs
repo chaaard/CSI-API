@@ -25,16 +25,6 @@ namespace CSI.Infrastructure.Data
             }
         }
 
-        public MsSqlCon(string ConnectionString)
-        {
-            Con = new SqlConnection(ConnectionString);
-
-            if (this.Con.State == ConnectionState.Closed)
-            {
-                this.Con.Open();
-            }
-        }
-
         public void Dispose()
         {
             Con.Close();

@@ -33,6 +33,7 @@ namespace CSI.Infrastructure.Data
             Source = Set<Source>();
             AdjustmentExceptions = Set<AdjustmentExceptions>();
             GenerateInvoice = Set<GenerateInvoice>();
+            Reference = Set<Reference>();
         }
 
         public DbSet<User> Users { get; set; }
@@ -53,6 +54,7 @@ namespace CSI.Infrastructure.Data
         public DbSet<Source> Source { get; set; }
         public DbSet<AdjustmentExceptions> AdjustmentExceptions { get; set; }
         public DbSet<GenerateInvoice> GenerateInvoice { get; set; }
+        public DbSet<Reference> Reference { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -109,6 +111,9 @@ namespace CSI.Infrastructure.Data
 
             modelBuilder.Entity<GenerateInvoice>()
            .ToTable("tbl_generated_invoice");
+
+            modelBuilder.Entity<Reference>()
+           .ToTable("tbl_reference");
         }
     }
 }
