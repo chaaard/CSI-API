@@ -538,33 +538,38 @@ namespace CSI.Application.Services
                             transactionDate = null;
                         }
 
-                        if (transactionDate != null)
+                        var chktransactionDate = new DateTime();
+                        if (transactionDate.HasValue)
                         {
-                            var chktransactionDate = new DateTime();
-                            if (transactionDate.HasValue)
+                            chktransactionDate = transactionDate.Value.Date;
+                        }
+
+
+                        var convertDate = GetDateTime(selectedDate);
+                        if (convertDate == chktransactionDate)
+                        {
+                            if (transactionDate != null)
                             {
-                                chktransactionDate = transactionDate.Value.Date;
-                            }
-                            var cnvrtDate = GetDateTime(selectedDate);
-                            if (cnvrtDate == chktransactionDate)
-                            {
-                                var prooflist = new Prooflist
+                                if (convertDate == chktransactionDate)
                                 {
-                                    CustomerId = "9999011838",
-                                    TransactionDate = transactionDate,
-                                    OrderNo = worksheet.Cells[row, columnIndexes["order id"]].Value?.ToString(),
-                                    NonMembershipFee = (decimal?)0.00,
-                                    PurchasedAmount = (decimal?)0.00,
-                                    Amount = worksheet.Cells[row, columnIndexes["subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["subtotal"]].Value?.ToString()) : null,
-                                    StatusId = worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Delivered" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Transferred" ? 3 : worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Cancelled" && worksheet.Cells[row, columnIndexes["is payable"]].Value.ToString() == "yes" ? 3 : null,
-                                    StoreId = club,
-                                    DeleteFlag = false,
-                                };
-                                foodPandaProofList.Add(prooflist);
-                            }
-                            else
-                            {
-                                return (foodPandaProofList, "Uploaded file transaction dates do not match.");
+                                    var prooflist = new Prooflist
+                                    {
+                                        CustomerId = "9999011838",
+                                        TransactionDate = transactionDate,
+                                        OrderNo = worksheet.Cells[row, columnIndexes["order id"]].Value?.ToString(),
+                                        NonMembershipFee = (decimal?)0.00,
+                                        PurchasedAmount = (decimal?)0.00,
+                                        Amount = worksheet.Cells[row, columnIndexes["subtotal"]].Value != null ? decimal.Parse(worksheet.Cells[row, columnIndexes["subtotal"]].Value?.ToString()) : null,
+                                        StatusId = worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Completed" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Delivered" || worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Transferred" ? 3 : worksheet.Cells[row, columnIndexes["order status"]].Value?.ToString() == "Cancelled" && worksheet.Cells[row, columnIndexes["is payable"]].Value.ToString() == "yes" ? 3 : null,
+                                        StoreId = club,
+                                        DeleteFlag = false,
+                                    };
+                                    foodPandaProofList.Add(prooflist);
+                                }
+                                else
+                                {
+                                    return (foodPandaProofList, "Uploaded file transaction dates do not match.");
+                                }
                             }
                         }
                     }
