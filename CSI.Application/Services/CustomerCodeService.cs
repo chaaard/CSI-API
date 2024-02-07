@@ -24,21 +24,14 @@ namespace CSI.Application.Services
         {
             var query = _dbContext.CustomerCodes
                 .Where(customerCode => customerCode.DeleteFlag == false)
-                .GroupJoin(
-                    _dbContext.Category,
-                    customerCode => customerCode.CategoryId,
-                    category => category.Id,
-                    (customerCode, categoryGroup) => new { customerCode, categoryGroup }
-                )
-                .SelectMany(result => result.categoryGroup.DefaultIfEmpty(), (result, category) => new CustomerCodeDto
-                {
-                    Id = result.customerCode.Id,
-                    CustomerName = result.customerCode.CustomerName,
-                    CustomerCode = result.customerCode.CustomerCode,
-                    DeleteFlag = result.customerCode.DeleteFlag,
-                    Category = category != null ? category.CategoryName : null,
-                    CategoryId = result.customerCode.CategoryId,
-                });
+                .Select(n => new CustomerCodeDto { 
+                    Id = n.Id,
+                    CustomerNo = n.CustomerNo,
+                    CustomerCode = n.CustomerCode,
+                    CustomerName = n.CustomerName,
+                    DeleteFlag = n.DeleteFlag,
+                })
+                .AsQueryable();
 
             // Searching
             if (!string.IsNullOrEmpty(pagination.SearchQuery))
@@ -106,7 +99,7 @@ namespace CSI.Application.Services
             {
                 getCustomerCode.CustomerName = customerCode.CustomerName;
                 getCustomerCode.CustomerCode = customerCode.CustomerCode;
-                getCustomerCode.CategoryId = customerCode.CategoryId;
+                getCustomerCode.CustomerNo = customerCode.CustomerNo;
                 getCustomerCode.DeleteFlag = customerCode.DeleteFlag;
                 await _dbContext.SaveChangesAsync();
 

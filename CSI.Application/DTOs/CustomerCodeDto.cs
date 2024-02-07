@@ -13,7 +13,5 @@ namespace CSI.Application.DTOs
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerCode { get; set; } = string.Empty;
         public bool DeleteFlag { get; set; }
-        public string? Category { get; set; } = string.Empty;
-        public int? CategoryId { get; set; }
     }
 }
