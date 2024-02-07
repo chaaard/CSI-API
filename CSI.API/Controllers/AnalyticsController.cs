@@ -214,5 +214,31 @@ namespace CSI.API.Controllers
 
             return Ok(result);
         }
+
+        [HttpPost("GetAnalyticsToDelete")]
+        public async Task<IActionResult> GetAnalyticsToDelete(AnalyticsToDeleteDto analyticsToDelete)
+        {
+            var result = await _analyticsService.GetAnalyticsToDelete(analyticsToDelete);
+
+            if (result.Item1 != null)
+            {
+                return (Ok(result));
+            }
+            return (NotFound());
+        }
+
+        [HttpPut("DeleteAnalytics")]
+        public async Task<IActionResult> DeleteAnalytics(int id)
+        {
+            var result = await _analyticsService.DeleteAnalytics(id);
+            return (Ok(result));
+        }
+
+        [HttpPut("UpdateAnalytics")]
+        public async Task<IActionResult> UpdateAnalytics(UpdateAnalyticsDto updateAnalyticsDto)
+        {
+            var result = await _analyticsService.UpdateAnalytics(updateAnalyticsDto);
+            return (Ok(result));
+        }
     }
 }

@@ -22,5 +22,8 @@ namespace CSI.Application.Interfaces
         Task<List<Location>> GetLocations();
         Task<List<GenerateInvoice>> GetGeneratedInvoice(AnalyticsParamsDto analyticsParamsDto);
         Task<List<int>> GetClubs();
+        Task<(List<AnalyticsDto>, int)> GetAnalyticsToDelete(AnalyticsToDeleteDto analyticsToDelete);
+        Task<bool> DeleteAnalytics(int id);
+        Task<bool> UpdateAnalytics(UpdateAnalyticsDto updateAnalyticsDto);
     }
 }

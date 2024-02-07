@@ -14,6 +14,5 @@ namespace CSI.Domain.Entities
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerCode { get; set; } = string.Empty;
         public bool DeleteFlag { get; set; }
-        public int? CategoryId { get; set; }
     }
 }

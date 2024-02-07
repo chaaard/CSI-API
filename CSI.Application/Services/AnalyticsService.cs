@@ -16,6 +16,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace CSI.Application.Services
 {
@@ -116,6 +117,7 @@ namespace CSI.Application.Services
               .FromSqlRaw($" SELECT  " +
                           $"     MAX(a.Id) AS Id, " +
                           $"     MAX(a.CustomerId) AS CustomerId, " +
+                          $"     MAX(a.CustomerName) AS CustomerName, " +
                           $"     MAX(a.LocationId) AS LocationId, " +
                           $"     MAX(a.LocationName) AS LocationName, " +
                           $"     MAX(a.TransactionDate) AS TransactionDate, " +
@@ -134,6 +136,7 @@ namespace CSI.Application.Services
                           $"     SELECT   " +
                           $"         n.Id, " +
                           $"         n.CustomerId,  " +
+                          $"         c.CustomerName,  " +
                           $"         n.LocationId,  " +
                           $"         l.LocationName,  " +
                           $"         n.TransactionDate,   " +
@@ -151,9 +154,10 @@ namespace CSI.Application.Services
                           $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
                           $"     FROM tbl_analytics n " +
                           $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
+                          $"      INNER JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
                           $" ) a " +
                           $" WHERE  " +
-                          $"     (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                          $"     (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND a.DeleteFlag = 0) " +
                           $" GROUP BY  " +
                           $"     a.OrderNo,    " +
                           $"     ABS(a.SubTotal),  " +
@@ -198,6 +202,7 @@ namespace CSI.Application.Services
                 .FromSqlRaw($" SELECT  " +
                          $"     MAX(a.Id) AS Id, " +
                          $"     MAX(a.CustomerId) AS CustomerId, " +
+                         $"     MAX(a.CustomerName) AS CustomerName, " +
                          $"     MAX(a.LocationId) AS LocationId, " +
                          $"     MAX(a.LocationName) AS LocationName, " +
                          $"     MAX(a.TransactionDate) AS TransactionDate, " +
@@ -216,6 +221,7 @@ namespace CSI.Application.Services
                          $"     SELECT   " +
                          $"         n.Id, " +
                          $"         n.CustomerId,  " +
+                         $"         c.CustomerName,  " +
                          $"         n.LocationId,  " +
                          $"         l.LocationName,  " +
                          $"         n.TransactionDate,   " +
@@ -233,9 +239,10 @@ namespace CSI.Application.Services
                          $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
                          $"     FROM tbl_analytics n " +
                          $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
+                         $"      INNER JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
                          $" ) a " +
                          $" WHERE  " +
-                         $"     (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {refreshAnalyticsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                         $"     (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {refreshAnalyticsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') AND a.DeleteFlag = 0" +
                          $" GROUP BY  " +
                          $"     a.OrderNo,    " +
                          $"     ABS(a.SubTotal),  " +
@@ -274,7 +281,7 @@ namespace CSI.Application.Services
             if (DateTime.TryParse(analyticsParamsDto.dates[0], out date))
             {
                 result = await _dbContext.Analytics
-                    .Where(x => x.TransactionDate == date && x.LocationId == analyticsParamsDto.storeId[0] && analyticsParamsDto.memCode[0].Contains(x.CustomerId))
+                    .Where(x => x.TransactionDate == date && x.LocationId == analyticsParamsDto.storeId[0] && analyticsParamsDto.memCode[0].Contains(x.CustomerId) && x.DeleteFlag == false)
                     .SumAsync(e => e.SubTotal);
             }
             return result;
@@ -299,6 +306,7 @@ namespace CSI.Application.Services
                                $"     MAX(a.TransactionDate) AS TransactionDate, " +
                                $"     a.OrderNo, " +
                                $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
+                               $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
                                $"     ABS(a.SubTotal) AS SubTotal  " +
                                $" FROM ( " +
                                $"     SELECT   " +
@@ -311,13 +319,14 @@ namespace CSI.Application.Services
                                $"        n.[OrderNo], " +
                                $"        n.[SubTotal], " +
                                $"        n.[IsUpload],   " +
+                               $"        n.[DeleteFlag],   " +
                                $"        ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
                                $"     FROM tbl_analytics n " +
                                $"        LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = n.LocationId " +
                                $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
                                $" ) a " +
                                $" WHERE  " +
-                               $"      (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                               $"      (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND a.DeleteFlag = 0) " +
                                $" GROUP BY  " +
                                $"     a.OrderNo,    " +
                                $"     ABS(a.SubTotal),  " +
@@ -364,7 +373,7 @@ namespace CSI.Application.Services
                                   $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
                                   $"     LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId  " +
                                   $" WHERE " +
-                                  $"     (CAST(p.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4)  " +
+                                  $"     (CAST(p.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4  AND p.DeleteFlag = 0)  " +
                                $") p " +
                            $"ON a.[OrderNo] = p.[OrderNo]" +
                            $"ORDER BY COALESCE(p.Id, a.Id) DESC; ")
@@ -732,7 +741,7 @@ namespace CSI.Application.Services
                                 $"        LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
                                 $" ) a " +
                                 $" WHERE  " +
-                                $"      (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                                $"      (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%'  AND a.DeleteFlag = 0) " +
                                 $" GROUP BY  " +
                                 $"     a.OrderNo,    " +
                                 $"     ABS(a.SubTotal),  " +
@@ -779,7 +788,7 @@ namespace CSI.Application.Services
                                    $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
                                    $"     LEFT JOIN [dbo].[tbl_customer] c ON c.CustomerCode = p.CustomerId  " +
                                    $" WHERE " +
-                                   $"     (CAST(p.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4)  " +
+                                   $"     (CAST(p.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND p.StoreId = {analyticsParamsDto.storeId[0]} AND p.CustomerId LIKE '%{memCodeLast6Digits[0]}%' AND p.Amount IS NOT NULL AND p.Amount <> 0 AND p.StatusId != 4 AND p.DeleteFlag = 0)  " +
                                 $") p " +
                             $"ON a.[OrderNo] = p.[OrderNo]" +
                             $"ORDER BY COALESCE(p.Id, a.Id) DESC; ")
@@ -1033,7 +1042,7 @@ namespace CSI.Application.Services
                     CustomerNo = formattedData.FirstOrDefault().CustomerNo,
                     CustomerName = formattedData.FirstOrDefault().CustomerName,
                     InvoiceNo = formattedInvoiceNumber,
-                    InvoiceDate = currentDate,
+                    InvoiceDate = formattedData.FirstOrDefault().TransactionDate,
                     TransactionDate = formattedData.FirstOrDefault().TransactionDate,
                     Location = formattedData.FirstOrDefault().LocationName,
                     ReferenceNo = getReference.MerchReference + club + dateFormat,
@@ -1113,6 +1122,7 @@ namespace CSI.Application.Services
                        .FromSqlRaw($" SELECT  " +
                         $"     MAX(a.Id) AS Id, " +
                         $"     MAX(a.CustomerId) AS CustomerId, " +
+                        $"     MAX(a.CustomerName) AS CustomerName, " +
                         $"     MAX(a.LocationId) AS LocationId, " +
                         $"     MAX(a.LocationName) AS LocationName, " +
                         $"     MAX(a.TransactionDate) AS TransactionDate, " +
@@ -1131,6 +1141,7 @@ namespace CSI.Application.Services
                         $"     SELECT   " +
                         $"         n.Id, " +
                         $"         n.CustomerId,  " +
+                        $"         c.CustomerName,  " +
                         $"         n.LocationId,  " +
                         $"         l.LocationName,  " +
                         $"         n.TransactionDate,   " +
@@ -1148,9 +1159,10 @@ namespace CSI.Application.Services
                         $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
                         $"     FROM tbl_analytics n " +
                         $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
+                        $"      INNER JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
                         $" ) a " +
                         $" WHERE  " +
-                        $" (CAST(a.TransactionDate AS DATE) BETWEEN '{dateFrom.Date.ToString("yyyy-MM-dd")}' AND '{dateTo.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%') " +
+                        $" (CAST(a.TransactionDate AS DATE) BETWEEN '{dateFrom.Date.ToString("yyyy-MM-dd")}' AND '{dateTo.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsParamsDto.storeId[0]} AND a.CustomerId LIKE '%{memCodeLast6Digits[0]}%'  AND a.DeleteFlag = 0 ) " +
                         $" GROUP BY  " +
                         $"     a.OrderNo,    " +
                         $"     ABS(a.SubTotal),  " +
@@ -1199,6 +1211,133 @@ namespace CSI.Application.Services
                 }
             }
             return (weeklyReportList, recapList);
+        }
+
+        public async Task<(List<AnalyticsDto>, int)> GetAnalyticsToDelete(AnalyticsToDeleteDto analyticsToDelete)
+        {
+            var date = new DateTime();
+            IQueryable<AnalyticsDto> analytics = Enumerable.Empty<AnalyticsDto>().AsQueryable();
+            var totalPages = 0;
+            var formattedData = new List<AnalyticsDto>();
+            var memCodeLast6Digits = analyticsToDelete.memCode.Substring(Math.Max(0, analyticsToDelete.memCode.Length - 6));
+            if (DateTime.TryParse(analyticsToDelete.date, out date))
+            {
+                var result = await _dbContext.AnalyticsView
+                  .FromSqlRaw($" SELECT  " +
+                              $"     MAX(a.Id) AS Id, " +
+                              $"     MAX(a.CustomerName) AS CustomerName, " +
+                              $"     MAX(a.CustomerId) AS CustomerId, " +
+                              $"     MAX(a.LocationId) AS LocationId, " +
+                              $"     MAX(a.LocationName) AS LocationName, " +
+                              $"     MAX(a.TransactionDate) AS TransactionDate, " +
+                              $"     MAX(a.MembershipNo) AS MembershipNo, " +
+                              $"     MAX(a.CashierNo) AS CashierNo, " +
+                              $"     MAX(a.RegisterNo) AS RegisterNo, " +
+                              $"     MAX(a.TransactionNo) AS TransactionNo, " +
+                              $"     a.OrderNo, " +
+                              $"     MAX(a.Qty) AS Qty, " +
+                              $"     MAX(a.Amount) AS Amount, " +
+                              $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
+                              $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
+                              $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
+                              $"     ABS(a.SubTotal) AS SubTotal  " +
+                              $" FROM ( " +
+                              $"     SELECT   " +
+                              $"         n.Id, " +
+                              $"         c.CustomerName,  " +
+                              $"         n.CustomerId,  " +
+                              $"         n.LocationId,  " +
+                              $"         l.LocationName,  " +
+                              $"         n.TransactionDate,   " +
+                              $"         n.MembershipNo,   " +
+                              $"         n.CashierNo,  " +
+                              $"         n.RegisterNo,  " +
+                              $"         n.TransactionNo,  " +
+                              $"         n.OrderNo,  " +
+                              $"         n.Qty,  " +
+                              $"         n.Amount,  " +
+                              $"         n.SubTotal, " +
+                              $"         n.StatusId, " +
+                              $"         n.DeleteFlag,   " +
+                              $"         n.IsUpload,   " +
+                              $"         ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
+                              $"     FROM tbl_analytics n " +
+                              $"      INNER JOIN [dbo].[tbl_location] l ON n.LocationId = l.LocationCode " +
+                              $"      INNER JOIN [dbo].[tbl_customer] c ON c.CustomerCode = n.CustomerId " +
+                              $" ) a " +
+                              $" WHERE  " +
+                              $"     (CAST(a.TransactionDate AS DATE) = '{date.Date.ToString("yyyy-MM-dd")}' AND a.LocationId = {analyticsToDelete.storeId} AND a.CustomerId LIKE '%{memCodeLast6Digits}%' AND a.OrderNo LIKE '%{analyticsToDelete.jo}%' AND a.DeleteFlag = 0) " +
+                              $" GROUP BY  " +
+                              $"     a.OrderNo,    " +
+                              $"     ABS(a.SubTotal),  " +
+                              $"     a.row_num " +
+                              $" HAVING " +
+                              $"     COUNT(a.OrderNo) = 1 "
+                              )
+                  .ToListAsync();
+
+                analytics = result.Select(n => new AnalyticsDto
+                {
+                    Id = n.Id,
+                    CustomerName = n.CustomerName,
+                    LocationName = n.LocationName,
+                    TransactionDate = n.TransactionDate,
+                    MembershipNo = n.MembershipNo,
+                    CashierNo = n.CashierNo,
+                    RegisterNo = n.RegisterNo,
+                    TransactionNo = n.TransactionNo,
+                    OrderNo = n.OrderNo,
+                    Qty = n.Qty,
+                    Amount = n.Amount,
+                    SubTotal = n.SubTotal,
+                }).AsQueryable();
+
+                var totalItemCount = analytics.Count();
+                totalPages = (int)Math.Ceiling((double)totalItemCount / analyticsToDelete.PageSize);
+
+                formattedData = analytics
+                    .Skip((analyticsToDelete.PageNumber - 1) * analyticsToDelete.PageSize)
+                    .Take(analyticsToDelete.PageSize)
+                    .OrderByDescending(x => x.Id)
+                    .ToList();
+            }
+            return (formattedData, totalPages);
+        }
+
+        public async Task<bool> DeleteAnalytics(int id)
+        {
+            var result = false;
+
+            var GetAnalytics = await _dbContext.Analytics
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (GetAnalytics != null)
+            {
+                GetAnalytics.DeleteFlag = true;
+                await _dbContext.SaveChangesAsync();
+                result = true;
+            }
+
+            return result;
+        }
+
+        public async Task<bool> UpdateAnalytics(UpdateAnalyticsDto updateAnalyticsDto)
+        {
+            var result = false;
+
+            var GetAnalytics = await _dbContext.Analytics
+                .Where(x => x.Id == updateAnalyticsDto.Id)
+                .FirstOrDefaultAsync();
+
+            if (GetAnalytics != null)
+            {
+                GetAnalytics.CustomerId = updateAnalyticsDto.CustomerId;
+                await _dbContext.SaveChangesAsync();
+                result = true;
+            }
+
+            return result;
         }
     }
 }

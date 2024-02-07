@@ -10,6 +10,7 @@ namespace CSI.Application.DTOs
     {
         public int Id { get; set; }
         public string? CustomerId { get; set; } = string.Empty;
+        public string? CustomerName { get; set; } = string.Empty;
         public string? LocationName { get; set; }
         public DateTime? TransactionDate { get; set; }
         public string? MembershipNo { get; set; } = string.Empty;
