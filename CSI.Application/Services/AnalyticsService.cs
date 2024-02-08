@@ -306,7 +306,6 @@ namespace CSI.Application.Services
                                $"     MAX(a.TransactionDate) AS TransactionDate, " +
                                $"     a.OrderNo, " +
                                $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                               $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
                                $"     ABS(a.SubTotal) AS SubTotal  " +
                                $" FROM ( " +
                                $"     SELECT   " +
@@ -367,7 +366,8 @@ namespace CSI.Application.Services
                                        $"l.LocationName,  " +
                                        $"p.[TransactionDate],  " +
                                        $"p.[OrderNo], " +
-                                       $"p.[Amount]  " +
+                                       $"p.[Amount],  " +
+                                       $"p.[DeleteFlag]  " +
                                   $" FROM " +
                                   $"     [dbo].[tbl_prooflist] p  " +
                                   $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
@@ -733,8 +733,9 @@ namespace CSI.Application.Services
                                 $"        l.LocationName, " +
                                 $"        n.[TransactionDate], " +
                                 $"        n.[OrderNo], " +
-                                $"       n.[SubTotal], " +
+                                $"        n.[SubTotal], " +
                                 $"        n.[IsUpload],   " +
+                                $"        n.[DeleteFlag],   " +
                                 $"        ROW_NUMBER() OVER (PARTITION BY n.OrderNo, n.SubTotal ORDER BY n.SubTotal DESC) AS row_num " +
                                 $"     FROM tbl_analytics n " +
                                 $"        LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = n.LocationId " +
@@ -782,7 +783,8 @@ namespace CSI.Application.Services
                                         $"l.LocationName,  " +
                                         $"p.[TransactionDate],  " +
                                         $"p.[OrderNo], " +
-                                        $"p.[Amount]  " +
+                                        $"p.[Amount],  " +
+                                        $"p.[DeleteFlag]   " +
                                    $" FROM " +
                                    $"     [dbo].[tbl_prooflist] p  " +
                                    $"     LEFT JOIN [dbo].[tbl_location] l ON l.LocationCode = p.StoreId " +
