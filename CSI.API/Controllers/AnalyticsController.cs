@@ -240,5 +240,32 @@ namespace CSI.API.Controllers
             var result = await _analyticsService.UpdateAnalytics(updateAnalyticsDto);
             return (Ok(result));
         }
+
+        [HttpGet("CheckFolderPath")]
+        public IActionResult CheckFolderPath(string path)
+        {
+            var result = _analyticsService.CheckFolderPath(path);
+            return (Ok(result));
+        }
+
+        [HttpPost("GenerateA0File")]
+        public async Task<IActionResult> GenerateA0File(GenerateA0FileDto generateA0FileDto)
+        {
+            var result = await _analyticsService.GenerateA0File(generateA0FileDto);
+
+            if (result.Item1 != null)
+            {
+                var data = new
+                {
+                    Message = result.Item1,
+                    Result = result.Item2,
+                    Content = result.Item3,
+                    FileName = result.Item4
+                };
+
+                return (Ok(data));
+            }
+            return (NotFound());
+        }
     }
 }

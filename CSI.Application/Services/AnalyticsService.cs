@@ -935,128 +935,134 @@ namespace CSI.Application.Services
                 })
                 .ToList();
 
-            var customerCodesData = _dbContext.CustomerCodes
-                .Where(y => y.CustomerCode.Contains(transactionData.FirstOrDefault().CustomerId.Substring(Math.Max(0, transactionData.FirstOrDefault().CustomerId.Length - 6))))
-                .Select(y => new
-                {
-                    y.CustomerNo,
-                    y.CustomerName,
-                    y.CustomerCode, // Assuming CustomerCode is the correct property
-                })
-                .ToList();
 
-            var formattedData = transactionData
-                .Join(customerCodesData,
-                    x => x.CustomerId,
-                    y => y.CustomerCode,
-                    (x, y) => new
+            var firstTransaction = transactionData.FirstOrDefault();
+            if (firstTransaction != null)
+            {
+                var customerCodesData = _dbContext.CustomerCodes
+                    .Where(y => y.CustomerCode.Contains(firstTransaction.CustomerId.Substring(Math.Max(0, firstTransaction.CustomerId.Length - 6))))
+                    .Select(y => new
                     {
-                        x.TransactionDate,
-                        x.SubTotal,
-                        x.StatusId,
-                        x.LocationName,
                         y.CustomerNo,
                         y.CustomerName,
-                        x.CustomerId
+                        y.CustomerCode, // Assuming CustomerCode is the correct property
                     })
-                .ToList();
+                    .ToList();
 
-            var total = formattedData.Sum(x => x.SubTotal);
-            var locationList = await GetLocations();
+                var formattedData = transactionData
+                 .Join(customerCodesData,
+                     x => x.CustomerId,
+                     y => y.CustomerCode,
+                     (x, y) => new
+                     {
+                         x.TransactionDate,
+                         x.SubTotal,
+                         x.StatusId,
+                         x.LocationName,
+                         y.CustomerNo,
+                         y.CustomerName,
+                         x.CustomerId
+                     })
+                 .ToList();
 
-            var club = analyticsParamsDto.storeId[0];
-            var trxCount = result.Count();
-            var dateFormat = formattedData.FirstOrDefault().TransactionDate?.ToString("MMddyy");
+                var total = formattedData.Sum(x => x.SubTotal);
+                var locationList = await GetLocations();
 
-            isPending = formattedData
-                .Where(x => x.StatusId == 5)
-                .Any();
+                var club = analyticsParamsDto.storeId[0];
+                var trxCount = result.Count();
+                var dateFormat = formattedData.FirstOrDefault().TransactionDate?.ToString("MMddyy");
 
-            if (isPending)
-            {
-                return (invoiceAnalytics, isPending);
-            }
-            else
-            {
-                var lastInvoice = await _dbContext.GenerateInvoice.OrderByDescending(i => i.Id).FirstOrDefaultAsync();
-                long startingInvoiceNumber = 000000000001;
+                isPending = formattedData
+                    .Where(x => x.StatusId == 5)
+                    .Any();
 
-                if (lastInvoice != null)
+                if (isPending)
                 {
-                    startingInvoiceNumber = Convert.ToInt64(lastInvoice.InvoiceNo) + 1;
+                    return (invoiceAnalytics, isPending);
                 }
-
-                long newInvoiceNumber = startingInvoiceNumber;
-
-                while (await _dbContext.GenerateInvoice.AnyAsync(i => i.InvoiceNo == newInvoiceNumber.ToString("000000000000")))
+                else
                 {
-                    newInvoiceNumber++;
-                }
+                    var lastInvoice = await _dbContext.GenerateInvoice.OrderByDescending(i => i.Id).FirstOrDefaultAsync();
+                    long startingInvoiceNumber = 000000000001;
 
-                var formattedInvoiceNumber = newInvoiceNumber.ToString("000000000000");
-
-                var getShortName = locationList
-                    .Where(x => x.LocationName.Contains(formattedData.FirstOrDefault().LocationName))
-                    .Select(n => new
+                    if (lastInvoice != null)
                     {
-                        n.ShortName,
-                    })
-                    .FirstOrDefault();
+                        startingInvoiceNumber = Convert.ToInt64(lastInvoice.InvoiceNo) + 1;
+                    }
 
-                var formatCustomerNo = formattedData.FirstOrDefault().CustomerNo.Replace("P", "").Trim();
+                    long newInvoiceNumber = startingInvoiceNumber;
 
-                var getReference = await _dbContext.Reference
-                    .Where(x => x.CustomerNo == formatCustomerNo)
-                    .Select(n => new {
-                        n.MerchReference,
-                    })
-                    .FirstOrDefaultAsync();
+                    while (await _dbContext.GenerateInvoice.AnyAsync(i => i.InvoiceNo == newInvoiceNumber.ToString("000000000000")))
+                    {
+                        newInvoiceNumber++;
+                    }
 
-                var invoice = new InvoiceDto
-                {
-                    HDR_TRX_NUMBER = formattedInvoiceNumber,
-                    HDR_TRX_DATE = formattedData.FirstOrDefault().TransactionDate,
-                    HDR_PAYMENT_TYPE = "HS",
-                    HDR_BRANCH_CODE = getShortName.ShortName ?? "",
-                    HDR_CUSTOMER_NUMBER = formattedData.FirstOrDefault().CustomerNo,
-                    HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
-                    HDR_PAYMENT_TERM = "0",
-                    HDR_BUSINESS_LINE = "1",
-                    HDR_BATCH_SOURCE_NAME = "POS",
-                    HDR_GL_DATE = formattedData.FirstOrDefault().TransactionDate,
-                    HDR_SOURCE_REFERENCE = "HS",
-                    DTL_LINE_DESC = getReference.MerchReference + club + dateFormat + "-" + trxCount,
-                    DTL_QUANTITY = 1,
-                    DTL_AMOUNT = total,
-                    DTL_VAT_CODE = "",
-                    DTL_CURRENCY = "PHP",
-                    INVOICE_APPLIED = "0",
-                    FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
-                };
+                    var formattedInvoiceNumber = newInvoiceNumber.ToString("000000000000");
 
-                invoiceAnalytics.Add(invoice);
+                    var getShortName = locationList
+                        .Where(x => x.LocationName.Contains(formattedData.FirstOrDefault().LocationName))
+                        .Select(n => new
+                        {
+                            n.ShortName,
+                        })
+                        .FirstOrDefault();
+
+                    var formatCustomerNo = formattedData.FirstOrDefault().CustomerNo.Replace("P", "").Trim();
+
+                    var getReference = await _dbContext.Reference
+                        .Where(x => x.CustomerNo == formatCustomerNo)
+                        .Select(n => new {
+                            n.MerchReference,
+                        })
+                        .FirstOrDefaultAsync();
+
+                    var invoice = new InvoiceDto
+                    {
+                        HDR_TRX_NUMBER = formattedInvoiceNumber,
+                        HDR_TRX_DATE = formattedData.FirstOrDefault().TransactionDate,
+                        HDR_PAYMENT_TYPE = "HS",
+                        HDR_BRANCH_CODE = getShortName.ShortName ?? "",
+                        HDR_CUSTOMER_NUMBER = formattedData.FirstOrDefault().CustomerNo,
+                        HDR_CUSTOMER_SITE = getShortName.ShortName ?? "",
+                        HDR_PAYMENT_TERM = "0",
+                        HDR_BUSINESS_LINE = "1",
+                        HDR_BATCH_SOURCE_NAME = "POS",
+                        HDR_GL_DATE = formattedData.FirstOrDefault().TransactionDate,
+                        HDR_SOURCE_REFERENCE = "HS",
+                        DTL_LINE_DESC = getReference.MerchReference + club + dateFormat + "-" + trxCount,
+                        DTL_QUANTITY = 1,
+                        DTL_AMOUNT = total,
+                        DTL_VAT_CODE = "",
+                        DTL_CURRENCY = "PHP",
+                        INVOICE_APPLIED = "0",
+                        FILENAME = "SN" + DateTime.Now.ToString("MMddyy_hhmmss") + ".A01"
+                    };
+
+                    invoiceAnalytics.Add(invoice);
 
 
-                var generateInvoice = new GenerateInvoiceDto
-                {
-                    Club = club,
-                    CustomerCode = formattedData.FirstOrDefault().CustomerId,
-                    CustomerNo = formattedData.FirstOrDefault().CustomerNo,
-                    CustomerName = formattedData.FirstOrDefault().CustomerName,
-                    InvoiceNo = formattedInvoiceNumber,
-                    InvoiceDate = formattedData.FirstOrDefault().TransactionDate,
-                    TransactionDate = formattedData.FirstOrDefault().TransactionDate,
-                    Location = formattedData.FirstOrDefault().LocationName,
-                    ReferenceNo = getReference.MerchReference + club + dateFormat,
-                    InvoiceAmount = total,
-                };
+                    var generateInvoice = new GenerateInvoiceDto
+                    {
+                        Club = club,
+                        CustomerCode = formattedData.FirstOrDefault().CustomerId,
+                        CustomerNo = formattedData.FirstOrDefault().CustomerNo,
+                        CustomerName = formattedData.FirstOrDefault().CustomerName,
+                        InvoiceNo = formattedInvoiceNumber,
+                        InvoiceDate = formattedData.FirstOrDefault().TransactionDate,
+                        TransactionDate = formattedData.FirstOrDefault().TransactionDate,
+                        Location = formattedData.FirstOrDefault().LocationName,
+                        ReferenceNo = getReference.MerchReference + club + dateFormat,
+                        InvoiceAmount = total,
+                    };
 
-                var genInvoice = _mapper.Map<GenerateInvoiceDto, GenerateInvoice>(generateInvoice);
-                _dbContext.GenerateInvoice.Add(genInvoice);
-                await _dbContext.SaveChangesAsync();
+                    var genInvoice = _mapper.Map<GenerateInvoiceDto, GenerateInvoice>(generateInvoice);
+                    _dbContext.GenerateInvoice.Add(genInvoice);
+                    await _dbContext.SaveChangesAsync();
 
-                return (invoiceAnalytics, isPending);
+                    return (invoiceAnalytics, isPending);
+                }
             }
+            return (invoiceAnalytics, true);
         }
 
         public async Task<List<GenerateInvoice>> GetGeneratedInvoice(AnalyticsParamsDto analyticsParamsDto)
@@ -1340,6 +1346,97 @@ namespace CSI.Application.Services
             }
 
             return result;
+        }
+
+        public bool CheckFolderPath(string path)
+        {
+            try
+            {
+                var result = false;
+                if (Directory.Exists(path))
+                {
+                    result = true;
+                }
+
+                return result;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        public async Task<(string, bool, string, string)> GenerateA0File(GenerateA0FileDto generateA0FileDto)
+        {
+            try
+            {
+                var result = false;
+                var fileName = "";
+
+                var getInvoiceAnalytics = await GenerateInvoiceAnalytics(generateA0FileDto.analyticsParamsDto);
+                var getInvoice = getInvoiceAnalytics.Item1;
+                var isPending = getInvoiceAnalytics.Item2;
+
+                if (isPending)
+                {
+                    return ("Please submit the analytics first and try again.", false, "", "");
+                }
+                
+                var content = new StringBuilder();
+                var formattedItems = getInvoice.Select(item =>
+                {
+                    var formattedTRXDate = FormatDate(item.HDR_TRX_DATE);
+                    var formattedGLDate = FormatDate(item.HDR_GL_DATE);
+
+                    return new
+                    {
+                        HDR_TRX_NUMBER = item.HDR_TRX_NUMBER,
+                        HDR_TRX_DATE = formattedTRXDate,
+                        HDR_PAYMENT_TYPE = item.HDR_PAYMENT_TYPE,
+                        HDR_BRANCH_CODE = item.HDR_BRANCH_CODE,
+                        HDR_CUSTOMER_NUMBER = item.HDR_CUSTOMER_NUMBER,
+                        HDR_CUSTOMER_SITE = item.HDR_CUSTOMER_SITE,
+                        HDR_PAYMENT_TERM = item.HDR_PAYMENT_TERM,
+                        HDR_BUSINESS_LINE = item.HDR_BUSINESS_LINE,
+                        HDR_BATCH_SOURCE_NAME = item.HDR_BATCH_SOURCE_NAME,
+                        HDR_GL_DATE = formattedGLDate,
+                        HDR_SOURCE_REFERENCE = item.HDR_SOURCE_REFERENCE,
+                        DTL_LINE_DESC = item.DTL_LINE_DESC,
+                        DTL_QUANTITY = item.DTL_QUANTITY,
+                        DTL_AMOUNT = item.DTL_AMOUNT,
+                        DTL_VAT_CODE = item.DTL_VAT_CODE,
+                        DTL_CURRENCY = item.DTL_CURRENCY,
+                        INVOICE_APPLIED = item.INVOICE_APPLIED,
+                        FILENAME = item.FILENAME
+                    };
+                });
+
+                foreach (var item in formattedItems)
+                {
+                    fileName = item.FILENAME;
+                    content.AppendLine($"{item.HDR_TRX_NUMBER}|{item.HDR_TRX_DATE}|{item.HDR_PAYMENT_TYPE}|{item.HDR_BRANCH_CODE}|{item.HDR_CUSTOMER_NUMBER}|{item.HDR_CUSTOMER_SITE}|{item.HDR_PAYMENT_TERM}|{item.HDR_BUSINESS_LINE}|{item.HDR_BATCH_SOURCE_NAME}|{item.HDR_GL_DATE}|{item.HDR_SOURCE_REFERENCE}|{item.DTL_LINE_DESC}|{item.DTL_QUANTITY}|{item.DTL_AMOUNT}|{item.DTL_VAT_CODE}|{item.DTL_CURRENCY}|{item.INVOICE_APPLIED}|{item.FILENAME}|");
+                }
+
+                // Write content to file
+                string filePath = Path.Combine(generateA0FileDto.Path, fileName);
+                File.WriteAllText(filePath, content.ToString());
+
+                result = true;
+
+                return ("Invoice Generated Successfully", result, content.ToString(), fileName);
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        public string FormatDate(DateTime? value)
+        {
+            string formattedDate = value?.ToString("dd-MMM-yyyy");
+            return formattedDate;
         }
     }
 }
