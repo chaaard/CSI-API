@@ -311,7 +311,7 @@ namespace CSI.Application.Services
                                 $"     MAX(a.TransactionDate) AS TransactionDate, " +
                                 $"     a.OrderNo, " +
                                 $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                                $"     ABS(a.SubTotal) AS SubTotal  " +
+                                $"     MAX(a.SubTotal) AS SubTotal  " +
                                 $" FROM ( " +
                                 $"     SELECT   " +
                                 $"        n.[Id], " +

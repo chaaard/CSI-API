@@ -131,7 +131,7 @@ namespace CSI.Application.Services
                           $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
                           $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
                           $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                          $"     ABS(a.SubTotal) AS SubTotal  " +
+                          $"     MAX(a.SubTotal) AS SubTotal  " +
                           $" FROM ( " +
                           $"     SELECT   " +
                           $"         n.Id, " +
@@ -216,7 +216,7 @@ namespace CSI.Application.Services
                          $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
                          $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
                          $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                         $"     ABS(a.SubTotal) AS SubTotal  " +
+                         $"     MAX(a.SubTotal) AS SubTotal  " +
                          $" FROM ( " +
                          $"     SELECT   " +
                          $"         n.Id, " +
@@ -306,7 +306,7 @@ namespace CSI.Application.Services
                                $"     MAX(a.TransactionDate) AS TransactionDate, " +
                                $"     a.OrderNo, " +
                                $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                               $"     ABS(a.SubTotal) AS SubTotal  " +
+                               $"     MAX(a.SubTotal) AS SubTotal  " +
                                $" FROM ( " +
                                $"     SELECT   " +
                                $"        n.[Id], " +
@@ -723,7 +723,7 @@ namespace CSI.Application.Services
                                 $"     MAX(a.TransactionDate) AS TransactionDate, " +
                                 $"     a.OrderNo, " +
                                 $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                                $"     ABS(a.SubTotal) AS SubTotal  " +
+                                $"     MAX(a.SubTotal) AS SubTotal  " +
                                 $" FROM ( " +
                                 $"     SELECT   " +
                                 $"        n.[Id], " +
@@ -1144,7 +1144,7 @@ namespace CSI.Application.Services
                         $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
                         $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
                         $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                        $"     ABS(a.SubTotal) AS SubTotal  " +
+                        $"     MAX(a.SubTotal) AS SubTotal  " +
                         $" FROM ( " +
                         $"     SELECT   " +
                         $"         n.Id, " +
@@ -1248,7 +1248,7 @@ namespace CSI.Application.Services
                               $"     MAX(CAST(a.StatusId AS INT)) AS StatusId,  " +
                               $"     MAX(CAST(a.DeleteFlag AS INT)) AS DeleteFlag, " +
                               $"     MAX(CAST(a.IsUpload AS INT)) AS IsUpload, " +
-                              $"     ABS(a.SubTotal) AS SubTotal  " +
+                              $"     MAX(a.SubTotal) AS SubTotal  " +
                               $" FROM ( " +
                               $"     SELECT   " +
                               $"         n.Id, " +
